@@ -4,13 +4,12 @@
 
 ##  Tabla de Contenidos
 
-1. [Requisitos Previos y Herramientas](#-1-requisitos-previos-y-herramientas-necesarias)
-2. [Contexto y Arquitectura General](#️-2-contexto-y-arquitectura-general)
-3. [Configuración del Entorno Local](#️-3-configuración-del-entorno-local-paso-a-paso)
-4. [Estrategia de Ramas (GitFlow)](#-4-estrategia-de-ramas-gitflow-y-reglas-de-oro)
-5. [Convención de Commits](#-5-convención-de-commits-conventional-commits)
-6. [Flujo de Trabajo Diario](#-6-flujo-de-trabajo-diario-paso-a-paso)
-7. [Solución de Problemas Frecuentes](#️-7-solución-de-problemas-frecuentes-troubleshooting)
+1. [Requisitos Previos y Herramientas](#1-requisitos-previos-y-herramientas-necesarias)
+2. [Contexto y Arquitectura General](#2-contexto-y-arquitectura-general)
+3. [Configuración del Entorno Local](#3-configuración-del-entorno-local-paso-a-paso)
+4. [Estrategia de Ramas (GitFlow)](#4-estrategia-de-ramas-gitflow-y-reglas-de-oro)
+5. [Convención de Commits](#5-convención-de-commits-conventional-commits)
+6. [Flujo de Trabajo Diario](#6-flujo-de-trabajo-diario-paso-a-paso)
 
 ---
 
