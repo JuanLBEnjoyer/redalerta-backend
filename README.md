@@ -1,80 +1,131 @@
 # RedAlerta Backend API
 
-Servicio central del sistema de seguridad comunitaria **RedAlerta**. Este backend expone una API RESTful unificada consumida tanto por la **Aplicación Móvil (Android - Java)** como por el **Panel Web de Administración (Web)**.
+Servicio central del ecosistema de seguridad comunitaria RedAlerta. Este backend expone una API RESTful stateless unificada, diseñada para ser consumida por la aplicacion movil (Android) y el panel web administrativo.
 
 ---
 
-## Stack Tecnológico
+## Stack Tecnologico
 
-* **Lenguaje:** Java 17+ (LTS)
-* **Framework:** Spring Boot 3.3.x
-  * Spring Web (API RESTful)
-  * Spring Security (Autenticación JWT Stateless)
-  * Spring Data JPA (Persistencia / ORM)
-  * Jakarta Bean Validation (Validación de DTOs)
-* **Base de Datos:** Oracle Database (PDB `FREEPDB1`)
-* **Herramientas & Librerías:**
-  * Project Lombok
-  * AWS SDK v2 (Almacenamiento en S3)
-  * Firebase Admin SDK (Notificaciones Push FCM)
-* **Gestión de Proyecto:** Apache Maven
+* **Lenguaje:** Java 25
+* **Framework:** Spring Boot 4.1.1
+  * Spring Web (Controladores REST y serializacion JSON)
+  * Spring Security (Arquitectura stateless y autorizacion basada en roles)
+  * Spring Data JPA (Capa de persistencia con Hibernate)
+  * Jakarta Bean Validation (Validacion declarativa de DTOs)
+* **Seguridad y Criptografia:**
+  * JJWT (io.jsonwebtoken 0.12.6) para emision, firma HMAC-SHA256 y validacion de tokens JWT
+  * BCryptPasswordEncoder para almacenamiento seguro de credenciales
+* **Base de Datos:** Oracle Database (PDB FREEPDB1 / dialecto OracleDialect)
+* **Testing:**
+  * JUnit 5 (Jupiter Platform)
+  * Mockito para pruebas unitarias aisladas
+* **Herramientas de Construccion:** Apache Maven con Maven Wrapper (mvnw)
+* **Librerias Complementarias:** Project Lombok
 
 ---
 
 ## Arquitectura del Sistema
 
-El proyecto está diseñado bajo la arquitectura **Monolito Modular por Dominio (Feature-per-Package)**:
+El proyecto esta construido bajo una arquitectura modular orientada al dominio (Domain-Driven Design - DDD):
 
-* **Context Path Base:** `/api/v1` (`http://localhost:8080/api/v1/...`)
-* **Estandarización de Respuestas:**
-  * **Éxito (HTTP 2xx):** Envoltorio unificado `ApiResponse<T>`.
-  * **Excepciones / Errores (HTTP 4xx/5xx):** Capturados globalmente mediante `@RestControllerAdvice` retornando `ErrorResponse`.
+* **Context Path Base:** `/api/v1` (ejemplo: `http://localhost:8080/api/v1/auth/login`)
+* **Value Objects Inmutables:** El dominio encapsula reglas de negocio en objetos de valor inmutables (`Email`, `Documento`, `Rol`, `Genero`, `TipoDeDocumento`).
+* **Estandarizacion de Respuestas:**
+  * **Exito (HTTP 2xx):** Envoltorio generico `ApiResponse<T>` con estado, mensaje y carga util.
+  * **Errores (HTTP 4xx / 5xx):** Capturados centralizadamente por `GlobalExceptionHandler` (`@RestControllerAdvice`), retornando estructuras `ErrorResponse` consistentes.
+* **Seguridad Stateless:** Cada solicitud protegida es interceptada por `JwtAuthenticationFilter`, que extrae y valida el token portador (`Bearer`) antes de autorizar el acceso.
 
 ---
 
-## Estructura del Proyecto
+## Estructura de Paquetes
 
 ```text
-src/main/java/com/redalerta/backend/
-├── config/                         # Configuraciones de Spring (Security, CORS, AWS)
-├── common/                         # Componentes reutilizables globales
-│   ├── dto/                        # ApiResponse<T> y ErrorResponse
-│   ├── exception/                  # Excepciones personalizadas y GlobalExceptionHandler
-│   └── util/                       # Utilidades generales
-└── modules/                        # Módulos de negocio (Feature-per-Package)
-    ├── auth/                       # Autenticación y gestión de JWT
-    ├── usuario/                    # Gestión de usuarios y roles
-    ├── alerta/                     # Módulo principal de alertas comunitarias
-    ├── evidencia/                  # Módulo de evidencias (AWS S3)
-    └── notificacion/               # Módulo de notificaciones push (FCM)
+src/main/java/redalerta_backend/
+├── config/                          Configuracion global del framework
+│   ├── SecurityConfig.java          Cadena de filtros de seguridad HTTP
+│   └── security/                    Infraestructura de autenticacion JWT
+│       ├── JwtService.java          Firma, parsing y validacion de tokens
+│       ├── JwtAuthenticationFilter  Filtro interceptor OncePerRequestFilter
+│       └── CustomUserDetailsService Adaptador de UserDetailsService
+├── common/                          Componentes transversales reutilizables
+│   ├── dto/                         ApiResponse<T> y ErrorResponse
+│   └── exception/                   Jerarquia de excepciones y GlobalExceptionHandler
+└── modules/                         Modulos de negocio por contexto delimitado
+    ├── auth/                        Registro, inicio de sesion y emision de credenciales
+    │   ├── controller/              AuthController
+    │   ├── dto/                     LoginRequestDto, LoginResponseDto, RegistroRequestDto
+    │   └── service/                 AuthService e implementacion
+    ├── usuario/                     Gestion de usuarios, encuesta y caracterizacion
+    │   ├── entity/                  Usuario y CaracterizacionUsuario
+    │   ├── mapper/                  UsuarioMapper
+    │   ├── repository/              UsuarioRepository
+    │   └── valueobject/             Documento, Email, Genero, Rol, TipoDeDocumento
+    └── alerta/                      Modulo de alertas comunitarias y monitoreo
 ```
 
 ---
 
-## Inicio Rápido
+## Inicio Rapido
 
 ### Requisitos Previos
-1. JDK 17 o superior instalado.
-2. Oracle DB ejecutándose localmente o en Docker.
-3. Usuario Oracle configurado con cuota ilimitada (`ALTER USER jotape QUOTA UNLIMITED ON USERS;`).
 
-### Pasos para Ejecutar
-1. Clonar el repositorio:
+1. Java Development Kit (JDK) 25 o compatible instalado.
+2. Oracle Database (23c Free, 21c o 18c XE) en ejecucion local o en contenedor Docker.
+3. Usuario Oracle con permisos y cuota de almacenamiento asignada en el tablespace `USERS`.
+
+### Configuracion del Entorno
+
+1. Clonar el repositorio y acceder al directorio raiz:
    ```bash
-   git clone https://github.com/TU_ORGANIZACION/redalerta-backend.git
+   git clone https://github.com/JuanLBEnjoyer/redalerta-backend.git
    cd redalerta-backend
    ```
-2. Crear tu archivo de configuración `application.properties` basado en la plantilla:
+
+2. Crear el archivo de configuracion local a partir de la plantilla:
    ```bash
    cp src/main/resources/application-example.properties src/main/resources/application.properties
    ```
-3. Ejecutar la aplicación:
-   ```bash
-   ./mvnw spring-boot:run
-   ```
+
+   > Nota de seguridad: El archivo `application.properties` se encuentra excluido del control de versiones (.gitignore) para evitar la filtracion de credenciales y claves secretas al repositorio publico.
+
+3. Configurar las variables requeridas en `application.properties` o mediante variables de entorno del sistema (`JWT_SECRET`, `ORACLE_USERNAME`, `ORACLE_PASSWORD`).
+
+### Compilacion y Ejecucion de Pruebas
+
+Para validar la compilacion del codigo y ejecutar la suite completa de pruebas unitarias:
+
+```bash
+sh ./mvnw clean test
+```
+
+### Ejecutar la Aplicacion
+
+```bash
+sh ./mvnw spring-boot:run
+```
+
+El servidor iniciara en el puerto `8080` bajo el contexto base `/api/v1`.
 
 ---
 
-## Documentación para Desarrolladores
+## Modulos y Endpoints Disponibles
 
-Para conocer el flujo de trabajo diario con **GitFlow**, convenciones de commits y detalles de la arquitectura, consulta la [Guía de Desarrollo y Onboarding](GUIA_DESARROLLO.md).
+### Autenticacion (`/api/v1/auth`)
+
+| Metodo | Endpoint | Descripcion | Acceso |
+|---|---|---|---|
+| POST | `/api/v1/auth/registro` | Registro de usuario con encuesta de caracterizacion inicial | Publico |
+| POST | `/api/v1/auth/login` | Inicio de sesion y emision de token JWT Bearer | Publico |
+
+### Alertas (`/api/v1/alertas`)
+
+| Metodo | Endpoint | Descripcion | Acceso |
+|---|---|---|---|
+| GET | `/api/v1/alertas/ping` | Verificacion de estado del modulo | Publico |
+| GET | `/api/v1/alertas/prueba-error/{id}` | Endpoint de prueba para validacion de manejo de errores | Autenticado |
+
+---
+
+## Documentacion del Proyecto
+
+Para consultar los estandares de desarrollo, estrategia GitFlow y politicas de contribucion, consulte la [Guia de Desarrollo y Onboarding](GUIA_DESARROLLO.md).
