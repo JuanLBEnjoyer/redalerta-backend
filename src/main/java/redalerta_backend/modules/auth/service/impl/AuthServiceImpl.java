@@ -6,6 +6,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.EmailAlreadyExistException;
+import redalerta_backend.common.exception.UnauthorizedException;
+import redalerta_backend.config.security.JwtService;
+import redalerta_backend.modules.auth.dto.LoginRequestDto;
+import redalerta_backend.modules.auth.dto.LoginResponseDto;
 import redalerta_backend.modules.auth.dto.RegistroRequestDto;
 import redalerta_backend.modules.auth.service.AuthService;
 import redalerta_backend.modules.usuario.dto.CaracterizacionRequestDto;
@@ -26,6 +30,7 @@ public class AuthServiceImpl implements AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final UsuarioMapper usuarioMapper;
+    private final JwtService jwtService;
 
     @Override
     @Transactional
@@ -80,5 +85,31 @@ public class AuthServiceImpl implements AuthService {
         Usuario usuarioGuardado = usuarioRepository.save(nuevoUsuario);
 
         return usuarioMapper.toResponseDto(usuarioGuardado);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponseDto login(LoginRequestDto request) {
+        Email emailVO = new Email(request.getEmail());
+
+        Usuario usuario = usuarioRepository.findByEmail(emailVO)
+                .orElseThrow(() -> new UnauthorizedException("Credenciales inválidas"));
+
+        if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
+            throw new UnauthorizedException("Credenciales inválidas");
+        }
+
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            throw new UnauthorizedException("La cuenta de usuario se encuentra inactiva");
+        }
+
+        String token = jwtService.generateToken(usuario);
+        UsuarioResponseDto usuarioDto = usuarioMapper.toResponseDto(usuario);
+
+        return LoginResponseDto.builder()
+                .token(token)
+                .tipo("Bearer")
+                .usuario(usuarioDto)
+                .build();
     }
 }

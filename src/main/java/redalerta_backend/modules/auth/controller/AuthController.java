@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import redalerta_backend.common.dto.ApiResponse;
+import redalerta_backend.modules.auth.dto.LoginRequestDto;
+import redalerta_backend.modules.auth.dto.LoginResponseDto;
 import redalerta_backend.modules.auth.dto.RegistroRequestDto;
 import redalerta_backend.modules.auth.service.AuthService;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
@@ -27,6 +29,15 @@ public class AuthController {
         return new ResponseEntity<>(
                 ApiResponse.success(nuevoUsuario, "Usuario registrado exitosamente"),
                 HttpStatus.CREATED
+        );
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponseDto>> login(
+            @Valid @RequestBody LoginRequestDto request) {
+        LoginResponseDto loginResponse = authService.login(request);
+        return ResponseEntity.ok(
+                ApiResponse.success(loginResponse, "Inicio de sesión exitoso")
         );
     }
 }
