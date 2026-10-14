@@ -5,7 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import redalerta_backend.modules.usuario.entity.Usuario;
-import redalerta_backend.modules.usuario.valueobject.Email;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,7 +26,7 @@ class JwtServiceTest {
         Usuario usuario = Usuario.builder()
                 .id(1L)
                 .nombre("Juan Perez")
-                .email(new Email("juan@example.com"))
+                .email("juan@example.com")
                 .rol(Rol.ROLE_CIUDADANO)
                 .activo(true)
                 .build();

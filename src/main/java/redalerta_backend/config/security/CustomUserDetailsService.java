@@ -9,13 +9,12 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
-import redalerta_backend.modules.usuario.valueobject.Email;
 
 import java.util.Collections;
 
 /**
  * Adaptador personalizado de {@link UserDetailsService} de Spring Security.
- * Recupera la entidad de dominio {@link Usuario} utilizando el Value Object inmutable {@link Email}
+ * Recupera la entidad de dominio {@link Usuario} utilizando el correo electronico
  * y la mapea a la representacion de usuario reconocida por el contexto de seguridad.
  */
 @Service
@@ -33,11 +32,11 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String emailStr) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByEmail(new Email(emailStr))
+        Usuario usuario = usuarioRepository.findByEmail(emailStr)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + emailStr));
 
         return new User(
-                usuario.getEmail().valor(),
+                usuario.getEmail(),
                 usuario.getPassword(),
                 Boolean.TRUE.equals(usuario.getActivo()),
                 true,

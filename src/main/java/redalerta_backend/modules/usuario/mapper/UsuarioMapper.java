@@ -20,7 +20,7 @@ public class UsuarioMapper {
                 .id(usuario.getId())
                 .nombre(usuario.getNombre())
                 .documento(toDocumentoResponseDto(usuario.getDocumento()))
-                .email(usuario.getEmail() != null ? usuario.getEmail().valor() : null)
+                .email(usuario.getEmail())
                 .telefono(usuario.getTelefono())
                 .rol(usuario.getRol())
                 .activo(usuario.getActivo())

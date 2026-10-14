@@ -19,7 +19,6 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import redalerta_backend.modules.usuario.valueobject.Documento;
-import redalerta_backend.modules.usuario.valueobject.Email;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
 import java.time.LocalDateTime;
@@ -42,8 +41,8 @@ public class Usuario {
     @Embedded
     private Documento documento;
 
-    @Embedded
-    private Email email;
+    @Column(nullable = false, unique = true, length = 150)
+    private String email;
 
     @Column(nullable = false)
     private String password;

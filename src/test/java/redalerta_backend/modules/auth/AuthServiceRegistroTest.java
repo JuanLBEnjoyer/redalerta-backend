@@ -20,7 +20,6 @@ import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Documento;
-import redalerta_backend.modules.usuario.valueobject.Email;
 import redalerta_backend.modules.usuario.valueobject.Genero;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 import redalerta_backend.modules.usuario.valueobject.TipoDeDocumento;
@@ -79,14 +78,14 @@ class AuthServiceRegistroTest {
     @Test
     @DisplayName("Debe registrar un nuevo usuario exitosamente con rol CIUDADANO y caracterización")
     void registrarUsuarioExitoso() {
-        when(usuarioRepository.existsByEmail(any(Email.class))).thenReturn(false);
+        when(usuarioRepository.existsByEmail(any(String.class))).thenReturn(false);
         when(usuarioRepository.existsByDocumento(any(Documento.class))).thenReturn(false);
         when(passwordEncoder.encode(requestDto.getPassword())).thenReturn("$2a$10$encodedPassword");
 
         Usuario usuarioGuardado = Usuario.builder()
                 .id(1L)
                 .nombre("Maria Gomez")
-                .email(new Email("maria@example.com"))
+                .email("maria@example.com")
                 .documento(new Documento("1094857291", TipoDeDocumento.CEDULA))
                 .password("$2a$10$encodedPassword")
                 .rol(Rol.ROLE_CIUDADANO)
@@ -116,7 +115,7 @@ class AuthServiceRegistroTest {
     @Test
     @DisplayName("Debe lanzar EmailAlreadyExistException si el email ya existe")
     void registrarEmailDuplicado() {
-        when(usuarioRepository.existsByEmail(any(Email.class))).thenReturn(true);
+        when(usuarioRepository.existsByEmail(any(String.class))).thenReturn(true);
 
         EmailAlreadyExistException exception = assertThrows(
                 EmailAlreadyExistException.class,
@@ -130,7 +129,7 @@ class AuthServiceRegistroTest {
     @Test
     @DisplayName("Debe lanzar BadRequestException si el documento ya se encuentra registrado")
     void registrarDocumentoDuplicado() {
-        when(usuarioRepository.existsByEmail(any(Email.class))).thenReturn(false);
+        when(usuarioRepository.existsByEmail(any(String.class))).thenReturn(false);
         when(usuarioRepository.existsByDocumento(any(Documento.class))).thenReturn(true);
 
         BadRequestException exception = assertThrows(
