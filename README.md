@@ -29,7 +29,7 @@ Servicio central del ecosistema de seguridad comunitaria RedAlerta. Este backend
 El proyecto esta construido bajo una arquitectura modular orientada al dominio (Domain-Driven Design - DDD):
 
 * **Context Path Base:** `/api/v1` (ejemplo: `http://localhost:8080/api/v1/auth/login`)
-* **Value Objects Inmutables:** El dominio encapsula reglas de negocio en objetos de valor inmutables (`Email`, `Documento`, `Rol`, `Genero`, `TipoDeDocumento`).
+* **Value Objects Inmutables:** El dominio encapsula reglas de negocio en objetos de valor inmutables (`Documento`, `Ubicacion`, `UbicacionAlerta`, `Rol`, `Genero`, `TipoDeDocumento`).
 * **Estandarizacion de Respuestas:**
   * **Exito (HTTP 2xx):** Envoltorio generico `ApiResponse<T>` con estado, mensaje y carga util.
   * **Errores (HTTP 4xx / 5xx):** Capturados centralizadamente por `GlobalExceptionHandler` (`@RestControllerAdvice`), retornando estructuras `ErrorResponse` consistentes.
@@ -42,7 +42,8 @@ El proyecto esta construido bajo una arquitectura modular orientada al dominio (
 ```text
 src/main/java/redalerta_backend/
 ├── config/                          Configuracion global del framework
-│   ├── SecurityConfig.java          Cadena de filtros de seguridad HTTP
+│   ├── OpenApiConfig.java           Configuracion de OpenAPI 3 / Swagger
+│   ├── SecurityConfig.java          Cadena de filtros de seguridad HTTP y @EnableMethodSecurity
 │   └── security/                    Infraestructura de autenticacion JWT
 │       ├── JwtService.java          Firma, parsing y validacion de tokens
 │       ├── JwtAuthenticationFilter  Filtro interceptor OncePerRequestFilter
@@ -56,11 +57,19 @@ src/main/java/redalerta_backend/
     │   ├── dto/                     LoginRequestDto, LoginResponseDto, RegistroRequestDto
     │   └── service/                 AuthService e implementacion
     ├── usuario/                     Gestion de usuarios, encuesta y caracterizacion
+    │   ├── controller/              UsuarioController
+    │   ├── dto/                     UbicacionRequestDto, UbicacionResponseDto, etc.
     │   ├── entity/                  Usuario y CaracterizacionUsuario
     │   ├── mapper/                  UsuarioMapper
     │   ├── repository/              UsuarioRepository
-    │   └── valueobject/             Documento, Email, Genero, Rol, TipoDeDocumento
+    │   └── valueobject/             Documento, Ubicacion, Genero, Rol, TipoDeDocumento
     └── alerta/                      Modulo de alertas comunitarias y monitoreo
+        ├── controller/              AlertaController
+        ├── dto/                     CrearAlertaRequestDto, AlertaResponseDto, etc.
+        ├── entity/                  Alerta y EvidenciaAlerta
+        ├── mapper/                  AlertaMapper
+        ├── repository/              AlertaRepository
+        └── valueobject/             UbicacionAlerta, EstadoAlerta
 ```
 
 ---
@@ -105,6 +114,7 @@ sh ./mvnw spring-boot:run
 ```
 
 El servidor iniciara en el puerto `8080` bajo el contexto base `/api/v1`.
+La documentacion interactiva de Swagger UI estara disponible en: `http://localhost:8080/api/v1/swagger-ui.html`.
 
 ---
 
@@ -114,18 +124,27 @@ El servidor iniciara en el puerto `8080` bajo el contexto base `/api/v1`.
 
 | Metodo | Endpoint | Descripcion | Acceso |
 |---|---|---|---|
-| POST | `/api/v1/auth/registro` | Registro de usuario con encuesta de caracterizacion inicial | Publico |
+| POST | `/api/v1/auth/registro` | Registro de ciudadano con encuesta de caracterizacion inicial | Publico |
 | POST | `/api/v1/auth/login` | Inicio de sesion y emision de token JWT Bearer | Publico |
+
+### Usuarios (`/api/v1/usuarios`)
+
+| Metodo | Endpoint | Descripcion | Acceso |
+|---|---|---|---|
+| GET | `/api/v1/usuarios/perfil` | Consulta el perfil completo y encuesta del usuario autenticado | Autenticado |
+| PUT | `/api/v1/usuarios/perfil` | Actualiza informacion de contacto y contrasena del usuario | Autenticado |
 
 ### Alertas (`/api/v1/alertas`)
 
 | Metodo | Endpoint | Descripcion | Acceso |
 |---|---|---|---|
-| GET | `/api/v1/alertas/ping` | Verificacion de estado del modulo | Publico |
-| GET | `/api/v1/alertas/prueba-error/{id}` | Endpoint de prueba para validacion de manejo de errores | Autenticado |
+| POST | `/api/v1/alertas` | Publica una nueva alerta comunitaria con ubicacion y evidencias opcionales | Rol CIUDADANO |
+| GET | `/api/v1/alertas/mis-alertas` | Consulta el listado paginado de alertas propias del ciudadano | Rol CIUDADANO |
+| GET | `/api/v1/alertas/{id}` | Consulta el detalle completo de una alerta propia por su ID | Rol CIUDADANO |
 
 ---
 
 ## Documentacion del Proyecto
 
-Para consultar los estandares de desarrollo, estrategia GitFlow y politicas de contribucion, consulte la [Guia de Desarrollo y Onboarding](GUIA_DESARROLLO.md).
+* **[Diseno Funcional y Modelo de Negocio](docs/DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md):** Vision de producto, ecosistema de roles, modelo territorial, flujos operativos de triaje y politicas de negocio.
+* **[Guia de Desarrollo y Onboarding](GUIA_DESARROLLO.md):** Estandares tecnicos de ingenieria, arquitectura limpia, flujo de trabajo GitFlow y politicas de testing.
