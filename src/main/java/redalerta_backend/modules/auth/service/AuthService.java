@@ -30,4 +30,9 @@ public interface AuthService {
      * @throws redalerta_backend.common.exception.UnauthorizedException Si las credenciales no coinciden o la cuenta esta inactiva.
      */
     LoginResponseDto login(LoginRequestDto request);
+
+    /**
+     * Invalida el contexto de seguridad de la sesion del usuario autenticado en el hilo de ejecucion actual.
+     */
+    void logout();
 }

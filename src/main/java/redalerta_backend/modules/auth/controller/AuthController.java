@@ -76,4 +76,21 @@ public class AuthController {
         LoginResponseDto loginResponse = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success(loginResponse, "Inicio de sesión exitoso"));
     }
+
+    /**
+     * Cierra la sesion del usuario autenticado actual, limpiando el contexto de seguridad.
+     *
+     * @return Confirmacion de cierre de sesion con codigo HTTP 200 OK.
+     */
+    @Operation(summary = "Cerrar sesión", description = "Invalida la sesión del usuario en el contexto de seguridad y notifica a la aplicación cliente para purgar sus credenciales locales.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Sesión cerrada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Token de autenticación ausente o inválido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        authService.logout();
+        return ResponseEntity.ok(ApiResponse.success(null, "Sesión cerrada exitosamente"));
+    }
 }
