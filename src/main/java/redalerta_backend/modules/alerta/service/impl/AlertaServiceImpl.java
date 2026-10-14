@@ -1,6 +1,8 @@
 package redalerta_backend.modules.alerta.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redalerta_backend.common.exception.ResourceNotFoundException;
@@ -16,9 +18,11 @@ import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
+import redalerta_backend.modules.usuario.valueobject.Rol;
 
 /**
- * Implementacion del servicio enfocado exclusivamente en la publicacion de alertas por ciudadanos.
+ * Implementacion del servicio para la publicacion y consulta de alertas por parte de ciudadanos.
+ * Aplica principios Zero Trust y control de acceso contra vulnerabilidades IDOR.
  */
 @Service
 @RequiredArgsConstructor
@@ -34,12 +38,7 @@ public class AlertaServiceImpl implements AlertaService {
     @Override
     @Transactional
     public AlertaResponseDto crearAlerta(CrearAlertaRequestDto request, String emailUsuario) {
-        Usuario autor = usuarioRepository.findByEmail(emailUsuario)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + emailUsuario));
-
-        if (Boolean.FALSE.equals(autor.getActivo())) {
-            throw new UnauthorizedException("El usuario se encuentra inactivo");
-        }
+        Usuario autor = buscarUsuarioPorEmail(emailUsuario);
 
         UbicacionAlerta ubicacion = alertaMapper.toUbicacionAlerta(request.getUbicacion());
 
@@ -63,5 +62,46 @@ public class AlertaServiceImpl implements AlertaService {
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
         return alertaMapper.toResponseDto(alertaGuardada);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable) {
+        Usuario autor = buscarUsuarioPorEmail(emailUsuario);
+        return alertaRepository.findByAutorIdOrderByFechaCreacionDesc(autor.getId(), pageable)
+                .map(alertaMapper::toResponseDto);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario) {
+        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+
+        Alerta alerta = alertaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
+
+        // Prevencion IDOR: Si es ciudadano, solo puede consultar alertas de su propia autoria
+        if (usuario.getRol() == Rol.ROLE_CIUDADANO && !alerta.getAutor().getId().equals(usuario.getId())) {
+            throw new UnauthorizedException("No tiene permisos para acceder a esta alerta");
+        }
+
+        return alertaMapper.toResponseDto(alerta);
+    }
+
+    private Usuario buscarUsuarioPorEmail(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + email));
+
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            throw new UnauthorizedException("El usuario se encuentra inactivo");
+        }
+
+        return usuario;
     }
 }
