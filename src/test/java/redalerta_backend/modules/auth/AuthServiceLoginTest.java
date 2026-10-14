@@ -23,7 +23,6 @@ import redalerta_backend.modules.usuario.valueobject.Rol;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,8 +72,7 @@ class AuthServiceLoginTest {
                         .email("juan@example.com")
                         .rol(Rol.ROLE_CIUDADANO)
                         .activo(true)
-                        .build()
-        );
+                        .build());
 
         LoginResponseDto response = authService.login(request);
 
@@ -94,8 +92,7 @@ class AuthServiceLoginTest {
 
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
-                () -> authService.login(request)
-        );
+                () -> authService.login(request));
 
         assertEquals("Credenciales inválidas", exception.getMessage());
     }
@@ -109,8 +106,7 @@ class AuthServiceLoginTest {
 
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
-                () -> authService.login(request)
-        );
+                () -> authService.login(request));
 
         assertEquals("Credenciales inválidas", exception.getMessage());
     }
@@ -126,8 +122,7 @@ class AuthServiceLoginTest {
 
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
-                () -> authService.login(request)
-        );
+                () -> authService.login(request));
 
         assertEquals("La cuenta de usuario se encuentra inactiva", exception.getMessage());
     }

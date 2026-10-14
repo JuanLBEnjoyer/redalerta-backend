@@ -23,6 +23,11 @@ import redalerta_backend.modules.usuario.valueobject.Email;
 import redalerta_backend.modules.usuario.valueobject.Genero;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
+/**
+ * Implementacion del servicio de autenticacion y registro de usuarios.
+ * Aplica principios de Domain-Driven Design (DDD) con Value Objects inmutables,
+ * persistencia en cascada y seguridad defensiva contra enumeracion de cuentas.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -32,6 +37,11 @@ public class AuthServiceImpl implements AuthService {
     private final UsuarioMapper usuarioMapper;
     private final JwtService jwtService;
 
+    /**
+     * {@inheritDoc}
+     * Persiste el usuario y su entidad de caracterizacion en cascada (CascadeType.ALL)
+     * asegurando atomicidad transaccional.
+     */
     @Override
     @Transactional
     public UsuarioResponseDto registrar(RegistroRequestDto request) {
@@ -87,6 +97,11 @@ public class AuthServiceImpl implements AuthService {
         return usuarioMapper.toResponseDto(usuarioGuardado);
     }
 
+    /**
+     * {@inheritDoc}
+     * Ejecuta una consulta de solo lectura, verifica el hash de la contrasena con BCrypt
+     * y genera el token JWT con los claims del usuario autenticado.
+     */
     @Override
     @Transactional(readOnly = true)
     public LoginResponseDto login(LoginRequestDto request) {
