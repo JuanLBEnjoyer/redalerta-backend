@@ -41,7 +41,7 @@ public class JwtService {
         extraClaims.put("userId", usuario.getId());
         extraClaims.put("rol", usuario.getRol().name());
         extraClaims.put("nombre", usuario.getNombre());
-        return buildToken(extraClaims, usuario.getEmail().valor(), jwtExpiration);
+        return buildToken(extraClaims, usuario.getEmail(), jwtExpiration);
     }
 
     /**

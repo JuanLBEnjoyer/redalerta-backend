@@ -17,7 +17,6 @@ import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
-import redalerta_backend.modules.usuario.valueobject.Email;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
 import java.util.Optional;
@@ -50,7 +49,7 @@ class AuthServiceLoginTest {
         usuarioMock = Usuario.builder()
                 .id(1L)
                 .nombre("Juan Perez")
-                .email(new Email("juan@example.com"))
+                .email("juan@example.com")
                 .password("$2a$10$hashedpassword")
                 .rol(Rol.ROLE_CIUDADANO)
                 .activo(true)
@@ -62,7 +61,7 @@ class AuthServiceLoginTest {
     void loginExitoso() {
         LoginRequestDto request = new LoginRequestDto("juan@example.com", "Password123*");
 
-        when(usuarioRepository.findByEmail(new Email("juan@example.com"))).thenReturn(Optional.of(usuarioMock));
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
         when(passwordEncoder.matches("Password123*", "$2a$10$hashedpassword")).thenReturn(true);
         when(jwtService.generateToken(usuarioMock)).thenReturn("mocked-jwt-token");
         when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
@@ -87,7 +86,7 @@ class AuthServiceLoginTest {
     void loginPasswordInvalido() {
         LoginRequestDto request = new LoginRequestDto("juan@example.com", "PasswordWrong");
 
-        when(usuarioRepository.findByEmail(new Email("juan@example.com"))).thenReturn(Optional.of(usuarioMock));
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
         when(passwordEncoder.matches("PasswordWrong", "$2a$10$hashedpassword")).thenReturn(false);
 
         UnauthorizedException exception = assertThrows(
@@ -102,7 +101,7 @@ class AuthServiceLoginTest {
     void loginUsuarioNoExiste() {
         LoginRequestDto request = new LoginRequestDto("noexiste@example.com", "Password123*");
 
-        when(usuarioRepository.findByEmail(new Email("noexiste@example.com"))).thenReturn(Optional.empty());
+        when(usuarioRepository.findByEmail("noexiste@example.com")).thenReturn(Optional.empty());
 
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
@@ -117,7 +116,7 @@ class AuthServiceLoginTest {
         usuarioMock.setActivo(false);
         LoginRequestDto request = new LoginRequestDto("juan@example.com", "Password123*");
 
-        when(usuarioRepository.findByEmail(new Email("juan@example.com"))).thenReturn(Optional.of(usuarioMock));
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
         when(passwordEncoder.matches("Password123*", "$2a$10$hashedpassword")).thenReturn(true);
 
         UnauthorizedException exception = assertThrows(

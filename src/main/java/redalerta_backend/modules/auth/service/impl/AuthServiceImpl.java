@@ -19,7 +19,6 @@ import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Documento;
-import redalerta_backend.modules.usuario.valueobject.Email;
 import redalerta_backend.modules.usuario.valueobject.Genero;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
@@ -45,9 +44,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UsuarioResponseDto registrar(RegistroRequestDto request) {
-        Email emailVO = new Email(request.getEmail());
-        if (usuarioRepository.existsByEmail(emailVO)) {
-            throw new EmailAlreadyExistException(emailVO.valor());
+        String email = request.getEmail().trim().toLowerCase();
+        if (usuarioRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistException(email);
         }
 
         Documento documentoVO = new Documento(
@@ -61,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
         Usuario nuevoUsuario = Usuario.builder()
                 .nombre(request.getNombre().trim())
                 .documento(documentoVO)
-                .email(emailVO)
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .telefono(request.getTelefono() != null ? request.getTelefono().trim() : null)
                 .rol(Rol.ROLE_CIUDADANO)
@@ -105,9 +104,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public LoginResponseDto login(LoginRequestDto request) {
-        Email emailVO = new Email(request.getEmail());
+        String email = request.getEmail().trim().toLowerCase();
 
-        Usuario usuario = usuarioRepository.findByEmail(emailVO)
+        Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UnauthorizedException("Credenciales inválidas"));
 
         if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
