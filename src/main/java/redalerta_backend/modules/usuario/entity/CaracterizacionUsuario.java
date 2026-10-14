@@ -52,12 +52,6 @@ public class CaracterizacionUsuario {
     @Column(nullable = false)
     private Boolean enGestacionLactancia = false;
 
-    @Column(nullable = false, length = 150)
-    private String direccionResidencia;
-
-    @Column(nullable = false, length = 100)
-    private String barrio;
-
     @Column(nullable = false)
     private Integer numeroIntegrantesFamilia;
 

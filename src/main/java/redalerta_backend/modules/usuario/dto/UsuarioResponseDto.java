@@ -17,6 +17,7 @@ public class UsuarioResponseDto {
     private Long id;
     private String nombre;
     private DocumentoResponseDto documento;
+    private UbicacionResponseDto ubicacion;
     private String email;
     private String telefono;
     private Rol rol;

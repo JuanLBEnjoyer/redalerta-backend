@@ -3,10 +3,13 @@ package redalerta_backend.modules.usuario.mapper;
 import org.springframework.stereotype.Component;
 import redalerta_backend.modules.usuario.dto.CaracterizacionResponseDto;
 import redalerta_backend.modules.usuario.dto.DocumentoResponseDto;
+import redalerta_backend.modules.usuario.dto.UbicacionRequestDto;
+import redalerta_backend.modules.usuario.dto.UbicacionResponseDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.CaracterizacionUsuario;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.valueobject.Documento;
+import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 @Component
 public class UsuarioMapper {
@@ -20,6 +23,7 @@ public class UsuarioMapper {
                 .id(usuario.getId())
                 .nombre(usuario.getNombre())
                 .documento(toDocumentoResponseDto(usuario.getDocumento()))
+                .ubicacion(toUbicacionResponseDto(usuario.getUbicacion()))
                 .email(usuario.getEmail())
                 .telefono(usuario.getTelefono())
                 .rol(usuario.getRol())
@@ -40,6 +44,30 @@ public class UsuarioMapper {
                 .build();
     }
 
+    public UbicacionResponseDto toUbicacionResponseDto(Ubicacion ubicacion) {
+        if (ubicacion == null) {
+            return null;
+        }
+
+        return UbicacionResponseDto.builder()
+                .departamento(ubicacion.departamento())
+                .municipio(ubicacion.municipio())
+                .direccionResidencia(ubicacion.direccionResidencia())
+                .build();
+    }
+
+    public Ubicacion toUbicacion(UbicacionRequestDto dto) {
+        if (dto == null) {
+            return null;
+        }
+
+        return new Ubicacion(
+                dto.getDepartamento(),
+                dto.getMunicipio(),
+                dto.getDireccionResidencia()
+        );
+    }
+
     public CaracterizacionResponseDto toCaracterizacionResponseDto(CaracterizacionUsuario caracterizacion) {
         if (caracterizacion == null) {
             return null;
@@ -51,8 +79,6 @@ public class UsuarioMapper {
                 .edadCalculada(caracterizacion.getEdadCalculada())
                 .genero(caracterizacion.getGenero())
                 .enGestacionLactancia(caracterizacion.getEnGestacionLactancia())
-                .direccionResidencia(caracterizacion.getDireccionResidencia())
-                .barrio(caracterizacion.getBarrio())
                 .numeroIntegrantesFamilia(caracterizacion.getNumeroIntegrantesFamilia())
                 .tieneMenoresDeEdad(caracterizacion.getTieneMenoresDeEdad())
                 .cantidadMenores(caracterizacion.getCantidadMenores())

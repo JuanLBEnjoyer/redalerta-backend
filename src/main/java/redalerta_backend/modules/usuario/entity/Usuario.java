@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import redalerta_backend.modules.usuario.valueobject.Documento;
 import redalerta_backend.modules.usuario.valueobject.Rol;
+import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 import java.time.LocalDateTime;
 
@@ -40,6 +41,9 @@ public class Usuario {
 
     @Embedded
     private Documento documento;
+
+    @Embedded
+    private Ubicacion ubicacion;
 
     @Column(nullable = false, unique = true, length = 150)
     private String email;

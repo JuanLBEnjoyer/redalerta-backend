@@ -22,6 +22,7 @@ import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Documento;
 import redalerta_backend.modules.usuario.valueobject.Genero;
 import redalerta_backend.modules.usuario.valueobject.Rol;
+import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 /**
  * Implementacion del servicio de autenticacion y registro de usuarios.
@@ -58,9 +59,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("El documento de identidad ya se encuentra registrado");
         }
 
+        Ubicacion ubicacionVO = usuarioMapper.toUbicacion(request.getUbicacion());
+
         Usuario nuevoUsuario = Usuario.builder()
                 .nombre(request.getNombre().trim())
                 .documento(documentoVO)
+                .ubicacion(ubicacionVO)
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .telefono(request.getTelefono() != null ? request.getTelefono().trim() : null)
@@ -76,8 +80,6 @@ public class AuthServiceImpl implements AuthService {
                 .fechaNacimiento(caracDto.getFechaNacimiento())
                 .genero(caracDto.getGenero())
                 .enGestacionLactancia(gestacionLactancia)
-                .direccionResidencia(caracDto.getDireccionResidencia().trim())
-                .barrio(caracDto.getBarrio().trim())
                 .numeroIntegrantesFamilia(caracDto.getNumeroIntegrantesFamilia())
                 .tieneMenoresDeEdad(Boolean.TRUE.equals(caracDto.getTieneMenoresDeEdad()))
                 .cantidadMenores(Boolean.TRUE.equals(caracDto.getTieneMenoresDeEdad()) && caracDto.getCantidadMenores() != null
