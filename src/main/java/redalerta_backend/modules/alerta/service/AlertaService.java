@@ -1,10 +1,12 @@
 package redalerta_backend.modules.alerta.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
 
 /**
- * Contrato de servicio para la creacion de alertas comunitarias.
+ * Contrato de servicio para la creacion y consulta de alertas comunitarias.
  */
 public interface AlertaService {
 
@@ -16,4 +18,22 @@ public interface AlertaService {
      * @return Alerta registrada con su estado inicial.
      */
     AlertaResponseDto crearAlerta(CrearAlertaRequestDto request, String emailUsuario);
+
+    /**
+     * Retorna el listado paginado de alertas creadas exclusivamente por el ciudadano autenticado.
+     *
+     * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+     * @param pageable Configuracion de paginacion y ordenamiento.
+     * @return Pagina de alertas del ciudadano.
+     */
+    Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable);
+
+    /**
+     * Obtiene el detalle de una alerta especifica perteneciente al ciudadano autenticado.
+     *
+     * @param id Identificador unico de la alerta.
+     * @param emailUsuario Correo del usuario autenticado.
+     * @return Detalle de la alerta encontrada.
+     */
+    AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario);
 }
