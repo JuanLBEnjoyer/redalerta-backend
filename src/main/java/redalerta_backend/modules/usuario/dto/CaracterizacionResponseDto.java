@@ -20,8 +20,6 @@ public class CaracterizacionResponseDto {
     private Integer edadCalculada;
     private Genero genero;
     private Boolean enGestacionLactancia;
-    private String direccionResidencia;
-    private String barrio;
     private Integer numeroIntegrantesFamilia;
     private Boolean tieneMenoresDeEdad;
     private Integer cantidadMenores;

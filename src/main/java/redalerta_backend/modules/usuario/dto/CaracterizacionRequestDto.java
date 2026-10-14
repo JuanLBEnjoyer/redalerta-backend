@@ -29,14 +29,6 @@ public class CaracterizacionRequestDto {
     @Builder.Default
     private Boolean enGestacionLactancia = false;
 
-    @NotBlank(message = "La dirección de residencia es obligatoria")
-    @Size(max = 150, message = "La dirección no puede superar los 150 caracteres")
-    private String direccionResidencia;
-
-    @NotBlank(message = "El barrio o sector es obligatorio")
-    @Size(max = 100, message = "El barrio no puede superar los 100 caracteres")
-    private String barrio;
-
     @NotNull(message = "El número de integrantes de la familia es obligatorio")
     @Min(value = 1, message = "Debe haber al menos 1 integrante en la familia")
     private Integer numeroIntegrantesFamilia;

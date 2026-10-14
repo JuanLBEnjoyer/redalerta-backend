@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import redalerta_backend.modules.usuario.dto.CaracterizacionRequestDto;
 import redalerta_backend.modules.usuario.dto.DocumentoRequestDto;
+import redalerta_backend.modules.usuario.dto.UbicacionRequestDto;
 
 @Data
 @Builder
@@ -25,6 +26,10 @@ public class RegistroRequestDto {
     @NotNull(message = "Los datos del documento son obligatorios")
     @Valid
     private DocumentoRequestDto documento;
+
+    @NotNull(message = "Los datos de ubicación son obligatorios")
+    @Valid
+    private UbicacionRequestDto ubicacion;
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico no es válido")
