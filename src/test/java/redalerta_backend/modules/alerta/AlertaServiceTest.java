@@ -7,6 +7,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
@@ -167,5 +171,85 @@ class AlertaServiceTest {
 
         assertTrue(exception.getMessage().contains("carlos@example.com"));
         verify(alertaRepository, never()).save(any(Alerta.class));
+    }
+
+    @Test
+    @DisplayName("Debe listar las alertas del ciudadano de forma paginada")
+    void listarMisAlertasExitoso() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Alerta alerta = Alerta.builder()
+                .id(1L)
+                .descripcion("Incidente en la via")
+                .autor(usuarioCiudadano)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findByAutorIdOrderByFechaCreacionDesc(1L, pageable))
+                .thenReturn(new PageImpl<>(List.of(alerta)));
+        when(alertaMapper.toResponseDto(alerta)).thenReturn(
+                AlertaResponseDto.builder().id(1L).descripcion("Incidente en la via").build()
+        );
+
+        Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas("carlos@example.com", pageable);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.getContent().size());
+        assertEquals(1L, resultado.getContent().getFirst().getId());
+    }
+
+    @Test
+    @DisplayName("Debe obtener el detalle de una alerta especifica si pertenece al ciudadano")
+    void obtenerAlertaPorIdExitoso() {
+        Alerta alerta = Alerta.builder()
+                .id(5L)
+                .descripcion("Alerta propia")
+                .autor(usuarioCiudadano)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(5L)).thenReturn(Optional.of(alerta));
+        when(alertaMapper.toResponseDto(alerta)).thenReturn(
+                AlertaResponseDto.builder().id(5L).descripcion("Alerta propia").build()
+        );
+
+        AlertaResponseDto respuesta = alertaService.obtenerAlertaPorId(5L, "carlos@example.com");
+
+        assertNotNull(respuesta);
+        assertEquals(5L, respuesta.getId());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si un ciudadano intenta consultar una alerta ajena")
+    void obtenerAlertaPorIdAccesoDenegadoOtroUsuario() {
+        Usuario otroUsuario = Usuario.builder().id(99L).build();
+        Alerta alertaAjena = Alerta.builder()
+                .id(5L)
+                .descripcion("Alerta de otro ciudadano")
+                .autor(otroUsuario)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(5L)).thenReturn(Optional.of(alertaAjena));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> alertaService.obtenerAlertaPorId(5L, "carlos@example.com")
+        );
+
+        assertEquals("No tiene permisos para acceder a esta alerta", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException si la alerta no existe")
+    void obtenerAlertaPorIdNoExiste() {
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> alertaService.obtenerAlertaPorId(999L, "carlos@example.com")
+        );
+
+        assertTrue(exception.getMessage().contains("999"));
     }
 }
