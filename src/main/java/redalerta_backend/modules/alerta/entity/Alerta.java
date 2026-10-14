@@ -1,0 +1,80 @@
+package redalerta_backend.modules.alerta.entity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
+import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
+import redalerta_backend.modules.usuario.entity.Usuario;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Entidad que representa una alerta comunitaria creada por un ciudadano.
+ */
+@Entity
+@Table(name = "alertas")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Alerta {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 1000)
+    private String descripcion;
+
+    @Embedded
+    private UbicacionAlerta ubicacion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "autor_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Usuario autor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private EstadoAlerta estado = EstadoAlerta.PENDIENTE_REVISION;
+
+    @OneToMany(mappedBy = "alerta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<EvidenciaAlerta> evidencias = new ArrayList<>();
+
+    @Builder.Default
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion = LocalDateTime.now();
+
+    public void agregarEvidencia(EvidenciaAlerta evidencia) {
+        if (this.evidencias == null) {
+            this.evidencias = new ArrayList<>();
+        }
+        this.evidencias.add(evidencia);
+        evidencia.setAlerta(this);
+    }
+}
