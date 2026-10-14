@@ -7,6 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.config.security.JwtService;
@@ -124,5 +126,18 @@ class AuthServiceLoginTest {
                 () -> authService.login(request));
 
         assertEquals("La cuenta de usuario se encuentra inactiva", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Debe cerrar la sesión del usuario limpiando el SecurityContext")
+    void logoutExitoso() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(usuarioMock.getEmail(), null, java.util.Collections.emptyList())
+        );
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+
+        authService.logout();
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 }

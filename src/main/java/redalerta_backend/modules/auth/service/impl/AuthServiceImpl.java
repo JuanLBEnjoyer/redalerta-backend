@@ -1,6 +1,7 @@
 package redalerta_backend.modules.auth.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -125,5 +126,14 @@ public class AuthServiceImpl implements AuthService {
                 .tipo("Bearer")
                 .usuario(usuarioDto)
                 .build();
+    }
+
+    /**
+     * {@inheritDoc}
+     * Limpia el SecurityContextHolder para el hilo de solicitud actual.
+     */
+    @Override
+    public void logout() {
+        SecurityContextHolder.clearContext();
     }
 }
