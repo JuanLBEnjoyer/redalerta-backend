@@ -30,7 +30,7 @@ Guia tecnica para el equipo de desarrollo de RedAlerta. Este documento establece
 
 ## 2. Arquitectura y Principios de Diseno
 
-* **Documento Funcional y Reglas de Negocio:** Antes de implementar o modificar funcionalidades, revise el documento de [Diseno Funcional y Modelo de Negocio](docs/DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md) para entender el flujo de aprobaciones, roles y ciclo de vida de alertas.
+* **Documento Funcional y Reglas de Negocio:** Antes de implementar o modificar funcionalidades, revise el documento de [Diseno Funcional y Modelo de Negocio](DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md) para entender el flujo de aprobaciones, roles y ciclo de vida de alertas.
 * **Arquitectura Monolitica Modular:** Organizacion por contextos delimitados (DDD) dentro del paquete `modules/` (`auth`, `usuario`, `alerta`).
 * **Value Objects Inmutables:** Los atributos criticos de negocio (`Email`, `Documento`, `Rol`, `Genero`, `Ubicacion`, `UbicacionAlerta`) se implementan como `record` de Java con validaciones estrictas en el constructor compacto.
 * **Seguridad Stateless con JWT:** Spring Security configurado sin estado de sesion (`SessionCreationPolicy.STATELESS`). Cada solicitud autenticada debe incluir el encabezado HTTP:
