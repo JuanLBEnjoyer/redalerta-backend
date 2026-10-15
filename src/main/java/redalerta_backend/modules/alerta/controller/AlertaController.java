@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +28,7 @@ import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.service.AlertaService;
 
 /**
@@ -146,5 +148,35 @@ public class AlertaController {
             Authentication authentication) {
         alertaService.eliminarAlerta(id, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(null, "Alerta eliminada exitosamente"));
+    }
+
+    /**
+     * Permite a un ciudadano autenticado modificar una alerta de su autoria en estado PENDIENTE_REVISION.
+     *
+     * @param id Identificador unico de la alerta a modificar.
+     * @param request Datos actualizados de la alerta (descripcion, ubicacion territorial y evidencias).
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Alerta actualizada y codigo HTTP 200 OK.
+     */
+    @Operation(summary = "Modificar alerta", description = "Permite a un ciudadano modificar una alerta propia, unicamente si esta en estado PENDIENTE_REVISION.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Alerta modificada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de entrada invalidos o estado diferente de PENDIENTE_REVISION",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (no es el autor de la alerta)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CIUDADANO')")
+    public ResponseEntity<ApiResponse<AlertaResponseDto>> modificarAlerta(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificarAlertaRequestDto request,
+            Authentication authentication) {
+        AlertaResponseDto alertaActualizada = alertaService.modificarAlerta(id, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(alertaActualizada, "Alerta modificada exitosamente"));
     }
 }

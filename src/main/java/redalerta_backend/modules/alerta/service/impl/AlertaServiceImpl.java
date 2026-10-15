@@ -10,6 +10,7 @@ import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
@@ -117,6 +118,46 @@ public class AlertaServiceImpl implements AlertaService {
         }
 
         alertaRepository.delete(alerta);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public AlertaResponseDto modificarAlerta(Long id, ModificarAlertaRequestDto request, String emailUsuario) {
+        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+
+        Alerta alerta = alertaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
+
+        // Prevencion IDOR: Solo el autor puede modificar su alerta
+        if (!alerta.getAutor().getId().equals(usuario.getId())) {
+            throw new UnauthorizedException("No tiene permisos para modificar esta alerta");
+        }
+
+        // Regla de negocio: Solo se pueden modificar alertas en estado PENDIENTE_REVISION
+        if (alerta.getEstado() != EstadoAlerta.PENDIENTE_REVISION) {
+            throw new BadRequestException("Solo se pueden modificar alertas en estado PENDIENTE_REVISION");
+        }
+
+        alerta.setDescripcion(request.getDescripcion().trim());
+        alerta.setUbicacion(alertaMapper.toUbicacionAlerta(request.getUbicacion()));
+
+        if (request.getEvidenciasUrls() != null) {
+            alerta.getEvidencias().clear();
+            for (String url : request.getEvidenciasUrls()) {
+                if (url != null && !url.isBlank()) {
+                    EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
+                            .url(url.trim())
+                            .build();
+                    alerta.agregarEvidencia(evidencia);
+                }
+            }
+        }
+
+        Alerta alertaActualizada = alertaRepository.save(alerta);
+        return alertaMapper.toResponseDto(alertaActualizada);
     }
 
     private Usuario buscarUsuarioPorEmail(String email) {

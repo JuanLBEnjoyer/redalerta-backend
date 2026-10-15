@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 
 /**
  * Contrato de servicio para la creacion y consulta de alertas comunitarias.
@@ -45,4 +46,15 @@ public interface AlertaService {
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      */
     void eliminarAlerta(Long id, String emailUsuario);
+
+    /**
+     * Modifica una alerta comunitaria creada por el ciudadano autenticado.
+     * Unicamente se permite la modificacion si la alerta se encuentra en estado PENDIENTE_REVISION.
+     *
+     * @param id Identificador unico de la alerta a modificar.
+     * @param request Datos actualizados de la alerta (descripcion, ubicacion, evidencias).
+     * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+     * @return Alerta actualizada en su representacion DTO.
+     */
+    AlertaResponseDto modificarAlerta(Long id, ModificarAlertaRequestDto request, String emailUsuario);
 }
