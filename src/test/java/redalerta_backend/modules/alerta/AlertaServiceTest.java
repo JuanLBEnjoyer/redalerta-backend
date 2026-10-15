@@ -16,6 +16,7 @@ import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.UbicacionAlertaDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
@@ -350,5 +351,150 @@ class AlertaServiceTest {
 
         assertEquals("Solo se pueden eliminar alertas en estado PENDIENTE_REVISION", exception.getMessage());
         verify(alertaRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Debe modificar la alerta exitosamente si pertenece al ciudadano y esta en PENDIENTE_REVISION")
+    void modificarAlertaExitosoConEvidencias() {
+        Alerta alertaOriginal = Alerta.builder()
+                .id(15L)
+                .descripcion("Descripcion original")
+                .ubicacion(ubicacionVO)
+                .autor(usuarioCiudadano)
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .build();
+
+        UbicacionAlertaDto nuevaUbicacionDto = UbicacionAlertaDto.builder()
+                .departamento("Risaralda")
+                .municipio("Pereira")
+                .direccionDetallada("Carrera 7 # 20-30")
+                .build();
+
+        UbicacionAlerta nuevaUbicacionVO = new UbicacionAlerta("Risaralda", "Pereira", "Carrera 7 # 20-30");
+
+        ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
+                .descripcion("Descripcion actualizada del incidente")
+                .ubicacion(nuevaUbicacionDto)
+                .evidenciasUrls(List.of("https://s3.amazonaws.com/redalerta/nueva_foto.jpg"))
+                .build();
+
+        AlertaResponseDto responseDto = AlertaResponseDto.builder()
+                .id(15L)
+                .descripcion("Descripcion actualizada del incidente")
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(15L)).thenReturn(Optional.of(alertaOriginal));
+        when(alertaMapper.toUbicacionAlerta(nuevaUbicacionDto)).thenReturn(nuevaUbicacionVO);
+        when(alertaRepository.save(any(Alerta.class))).thenReturn(alertaOriginal);
+        when(alertaMapper.toResponseDto(alertaOriginal)).thenReturn(responseDto);
+
+        AlertaResponseDto resultado = alertaService.modificarAlerta(15L, request, "carlos@example.com");
+
+        assertNotNull(resultado);
+        assertEquals(15L, resultado.getId());
+        assertEquals("Descripcion actualizada del incidente", resultado.getDescripcion());
+        verify(alertaRepository, times(1)).save(alertaOriginal);
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException al intentar modificar una alerta inexistente")
+    void modificarAlertaNoExiste() {
+        ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
+                .descripcion("Descripcion actualizada")
+                .ubicacion(ubicacionDto)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> alertaService.modificarAlerta(999L, request, "carlos@example.com")
+        );
+
+        assertTrue(exception.getMessage().contains("999"));
+        verify(alertaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si un usuario inactivo intenta modificar una alerta")
+    void modificarAlertaUsuarioInactivo() {
+        Usuario usuarioInactivo = Usuario.builder()
+                .id(2L)
+                .email("inactivo@example.com")
+                .activo(false)
+                .build();
+
+        ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
+                .descripcion("Descripcion actualizada")
+                .ubicacion(ubicacionDto)
+                .build();
+
+        when(usuarioRepository.findByEmail("inactivo@example.com")).thenReturn(Optional.of(usuarioInactivo));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> alertaService.modificarAlerta(15L, request, "inactivo@example.com")
+        );
+
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(alertaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si un ciudadano intenta modificar una alerta de otro usuario")
+    void modificarAlertaAccesoDenegadoOtroUsuario() {
+        Usuario otroUsuario = Usuario.builder().id(99L).build();
+        Alerta alertaAjena = Alerta.builder()
+                .id(15L)
+                .descripcion("Alerta de otro ciudadano")
+                .autor(otroUsuario)
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .build();
+
+        ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
+                .descripcion("Intento de modificar alerta ajena")
+                .ubicacion(ubicacionDto)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(15L)).thenReturn(Optional.of(alertaAjena));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> alertaService.modificarAlerta(15L, request, "carlos@example.com")
+        );
+
+        assertEquals("No tiene permisos para modificar esta alerta", exception.getMessage());
+        verify(alertaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar BadRequestException si la alerta a modificar ya no esta en PENDIENTE_REVISION")
+    void modificarAlertaEstadoNoValido() {
+        Alerta alertaEnGestion = Alerta.builder()
+                .id(15L)
+                .descripcion("Alerta ya en gestion")
+                .autor(usuarioCiudadano)
+                .estado(EstadoAlerta.EN_GESTION)
+                .build();
+
+        ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
+                .descripcion("Intento de modificar alerta en gestion")
+                .ubicacion(ubicacionDto)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(15L)).thenReturn(Optional.of(alertaEnGestion));
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> alertaService.modificarAlerta(15L, request, "carlos@example.com")
+        );
+
+        assertEquals("Solo se pueden modificar alertas en estado PENDIENTE_REVISION", exception.getMessage());
+        verify(alertaRepository, never()).save(any());
     }
 }
