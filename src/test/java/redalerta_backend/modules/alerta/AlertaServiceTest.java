@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
@@ -251,5 +252,103 @@ class AlertaServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("999"));
+    }
+
+    @Test
+    @DisplayName("Debe eliminar la alerta exitosamente si pertenece al ciudadano y esta en PENDIENTE_REVISION")
+    void eliminarAlertaExitoso() {
+        Alerta alerta = Alerta.builder()
+                .id(10L)
+                .descripcion("Alerta para eliminar")
+                .autor(usuarioCiudadano)
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(10L)).thenReturn(Optional.of(alerta));
+
+        alertaService.eliminarAlerta(10L, "carlos@example.com");
+
+        verify(alertaRepository, times(1)).delete(alerta);
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException al intentar eliminar una alerta inexistente")
+    void eliminarAlertaNoExiste() {
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> alertaService.eliminarAlerta(999L, "carlos@example.com")
+        );
+
+        assertTrue(exception.getMessage().contains("999"));
+        verify(alertaRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si un usuario inactivo intenta eliminar una alerta")
+    void eliminarAlertaUsuarioInactivo() {
+        Usuario usuarioInactivo = Usuario.builder()
+                .id(2L)
+                .email("inactivo@example.com")
+                .activo(false)
+                .build();
+
+        when(usuarioRepository.findByEmail("inactivo@example.com")).thenReturn(Optional.of(usuarioInactivo));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> alertaService.eliminarAlerta(10L, "inactivo@example.com")
+        );
+
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(alertaRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si un ciudadano intenta eliminar la alerta de otro usuario")
+    void eliminarAlertaAccesoDenegadoOtroUsuario() {
+        Usuario otroUsuario = Usuario.builder().id(99L).build();
+        Alerta alertaAjena = Alerta.builder()
+                .id(10L)
+                .descripcion("Alerta de otro usuario")
+                .autor(otroUsuario)
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(10L)).thenReturn(Optional.of(alertaAjena));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> alertaService.eliminarAlerta(10L, "carlos@example.com")
+        );
+
+        assertEquals("No tiene permisos para eliminar esta alerta", exception.getMessage());
+        verify(alertaRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar BadRequestException si la alerta ya no esta en PENDIENTE_REVISION")
+    void eliminarAlertaEstadoNoValido() {
+        Alerta alertaEnGestion = Alerta.builder()
+                .id(10L)
+                .descripcion("Alerta en gestion")
+                .autor(usuarioCiudadano)
+                .estado(EstadoAlerta.EN_GESTION)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(10L)).thenReturn(Optional.of(alertaEnGestion));
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> alertaService.eliminarAlerta(10L, "carlos@example.com")
+        );
+
+        assertEquals("Solo se pueden eliminar alertas en estado PENDIENTE_REVISION", exception.getMessage());
+        verify(alertaRepository, never()).delete(any());
     }
 }

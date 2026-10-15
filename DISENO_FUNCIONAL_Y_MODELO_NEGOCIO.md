@@ -140,6 +140,10 @@ Cuando un lider comunitario direcciona una alerta ocurrida en una ubicacion dete
 2. **Entidades con Ambito Departamental en Quindio:** Aquellas con cobertura en todo el departamento (ej. Gobernacion del Quindio, Cruz Roja Seccional Quindio, Policia Departamental).
 3. **Exclusion total:** Jamas se muestran entidades de otros departamentos ni entidades municipales pertenecientes a municipios distintos (ej. no apareceran los Bomberos de Pereira ni la Alcaldia de Calarca).
 
+### 5.2 Politica de Eliminacion y Cancelacion de Alertas
+* **Eliminacion por el Autor:** Un ciudadano puede eliminar definitivamente una alerta creada por el **unicamente** mientras se encuentre en la Fase 1 (`PENDIENTE_REVISION`).
+* **Bloqueo Operativo y Auditoria:** Tan pronto como la alerta es direccionada por un lider (Fase 2 `DIRECCIONADA`), entra en atencion institucional (Fase 3 `EN_GESTION`) o concluye (Fase 4 `RESUELTA` o `RECHAZADA`), la opcion de eliminacion queda estrictamente bloqueada para salvaguardar la trazabilidad y la responsabilidad sobre los recursos ya movilizados.
+
 ---
 
 ## 6. Arquitectura de Almacenamiento de Evidencias
