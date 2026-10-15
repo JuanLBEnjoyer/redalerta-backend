@@ -114,37 +114,45 @@ sh ./mvnw spring-boot:run
 ```
 
 El servidor iniciara en el puerto `8080` bajo el contexto base `/api/v1`.
-La documentacion interactiva de Swagger UI estara disponible en: `http://localhost:8080/api/v1/swagger-ui.html`.
 
 ---
 
-## Modulos y Endpoints Disponibles
+## Documentacion Interactiva de la API (Swagger UI & OpenAPI)
 
-### Autenticacion (`/api/v1/auth`)
+Para evitar la desincronizacion entre el codigo fuente y la documentacion escrita, RedAlerta expone su especificacion viva y actualizada automaticamente mediante **SpringDoc OpenAPI 3**.
 
-| Metodo | Endpoint | Descripcion | Acceso |
-|---|---|---|---|
-| POST | `/api/v1/auth/registro` | Registro de ciudadano con encuesta de caracterizacion inicial | Publico |
-| POST | `/api/v1/auth/login` | Inicio de sesion y emision de token JWT Bearer | Publico |
+### Enlaces de Acceso
 
-### Usuarios (`/api/v1/usuarios`)
+* **Consola Interactiva (Swagger UI):** [http://localhost:8080/api/v1/swagger-ui.html](http://localhost:8080/api/v1/swagger-ui.html)
+* **Especificacion en formato JSON:** [http://localhost:8080/api/v1/v3/api-docs](http://localhost:8080/api/v1/v3/api-docs)
 
-| Metodo | Endpoint | Descripcion | Acceso |
-|---|---|---|---|
-| GET | `/api/v1/usuarios/perfil` | Consulta el perfil completo y encuesta del usuario autenticado | Autenticado |
-| PUT | `/api/v1/usuarios/perfil` | Actualiza informacion de contacto y contrasena del usuario | Autenticado |
+### Como Explorar y Probar la API desde Swagger UI
 
-### Alertas (`/api/v1/alertas`)
+Swagger UI permite inspeccionar todos los endpoints agrupados por modulos (`Auth`, `Usuarios`, `Alertas`), sus esquemas DTO con validaciones, y ejecutar peticiones directamente:
 
-| Metodo | Endpoint | Descripcion | Acceso |
-|---|---|---|---|
-| POST | `/api/v1/alertas` | Publica una nueva alerta comunitaria con ubicacion y evidencias opcionales | Rol CIUDADANO |
-| GET | `/api/v1/alertas/mis-alertas` | Consulta el listado paginado de alertas propias del ciudadano | Rol CIUDADANO |
-| GET | `/api/v1/alertas/{id}` | Consulta el detalle completo de una alerta propia por su ID | Rol CIUDADANO |
+1. **Iniciar el servidor local:**
+   ```bash
+   sh ./mvnw spring-boot:run
+   ```
+2. **Generar un Token de Autenticacion:**
+   - Despliegue el modulo **Auth** en Swagger UI.
+   - Seleccione el endpoint `POST /api/v1/auth/login` (o cree un usuario nuevo en `POST /api/v1/auth/registro`).
+   - Haga clic en **Try it out**, ingrese las credenciales y presione **Execute**.
+   - Copie el valor del token JWT retornado en el campo `data.token`.
+3. **Autorizar las Peticiones en Swagger:**
+   - En la parte superior derecha de Swagger UI, haga clic en el boton **Authorize** (candado).
+   - En la ventana emergente, pegue el token en el campo **Value** del esquema `BearerAuth`.
+   - Haga clic en **Authorize** y luego en **Close**.
+4. **Probar Endpoints Protegidos:**
+   - A partir de este momento, cualquier solicitud enviada desde la consola (como consultar perfiles, publicar alertas, paginar listados o eliminar alertas) incluira automaticamente el encabezado HTTP:
+     ```http
+     Authorization: Bearer <token_jwt>
+     ```
+   - Podra visualizar en tiempo real los codigos de respuesta HTTP (200, 201, 400, 401, 403, 404) y la estructura de los payloads.
 
 ---
 
 ## Documentacion del Proyecto
 
-* **[Diseno Funcional y Modelo de Negocio](docs/DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md):** Vision de producto, ecosistema de roles, modelo territorial, flujos operativos de triaje y politicas de negocio.
+* **[Diseno Funcional y Modelo de Negocio](DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md):** Vision de producto, ecosistema de roles, modelo territorial, flujos operativos de triaje y politicas de negocio.
 * **[Guia de Desarrollo y Onboarding](GUIA_DESARROLLO.md):** Estandares tecnicos de ingenieria, arquitectura limpia, flujo de trabajo GitFlow y politicas de testing.
