@@ -36,4 +36,13 @@ public interface AlertaService {
      * @return Detalle de la alerta encontrada.
      */
     AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario);
+
+    /**
+     * Elimina una alerta comunitaria creada por el ciudadano autenticado.
+     * Unicamente se permite la eliminacion si la alerta se encuentra en estado PENDIENTE_REVISION.
+     *
+     * @param id Identificador unico de la alerta a eliminar.
+     * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+     */
+    void eliminarAlerta(Long id, String emailUsuario);
 }

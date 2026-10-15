@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
@@ -92,6 +93,30 @@ public class AlertaServiceImpl implements AlertaService {
         }
 
         return alertaMapper.toResponseDto(alerta);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void eliminarAlerta(Long id, String emailUsuario) {
+        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+
+        Alerta alerta = alertaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
+
+        // Prevencion IDOR: Solo el autor puede eliminar su alerta
+        if (!alerta.getAutor().getId().equals(usuario.getId())) {
+            throw new UnauthorizedException("No tiene permisos para eliminar esta alerta");
+        }
+
+        // Regla de negocio: Solo se pueden eliminar alertas en estado PENDIENTE_REVISION
+        if (alerta.getEstado() != EstadoAlerta.PENDIENTE_REVISION) {
+            throw new BadRequestException("Solo se pueden eliminar alertas en estado PENDIENTE_REVISION");
+        }
+
+        alertaRepository.delete(alerta);
     }
 
     private Usuario buscarUsuarioPorEmail(String email) {

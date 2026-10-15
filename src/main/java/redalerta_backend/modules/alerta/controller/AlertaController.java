@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -117,5 +118,33 @@ public class AlertaController {
             Authentication authentication) {
         AlertaResponseDto alerta = alertaService.obtenerAlertaPorId(id, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(alerta, "Detalle de alerta consultado exitosamente"));
+    }
+
+    /**
+     * Permite a un ciudadano autenticado eliminar una alerta de su autoria en estado PENDIENTE_REVISION.
+     *
+     * @param id Identificador unico de la alerta.
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Mensaje de confirmacion y codigo HTTP 200 OK.
+     */
+    @Operation(summary = "Eliminar alerta", description = "Permite a un ciudadano eliminar una alerta propia, unicamente si esta en estado PENDIENTE_REVISION.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Alerta eliminada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "La alerta no se encuentra en estado PENDIENTE_REVISION",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (no es el autor de la alerta)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('CIUDADANO')")
+    public ResponseEntity<ApiResponse<Void>> eliminarAlerta(
+            @PathVariable Long id,
+            Authentication authentication) {
+        alertaService.eliminarAlerta(id, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(null, "Alerta eliminada exitosamente"));
     }
 }
