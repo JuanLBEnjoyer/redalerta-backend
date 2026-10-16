@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 
@@ -31,16 +32,17 @@ public interface AlertaService {
     Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable);
 
     /**
-     * Retorna el listado paginado de alertas comunitarias activas o filtradas por un estado especifico.
-     * Si el estado es nulo, retorna por defecto las alertas en estados activos
+     * Retorna el listado paginado de alertas comunitarias aplicando los filtros especificados.
+     * Soporta filtrado por departamento, municipio, estado y rango de fechas.
+     * Si no se especifica un estado puntual, retorna por defecto las alertas en estados activos
      * (PENDIENTE_REVISION, DIRECCIONADA, EN_GESTION).
      *
-     * @param estado Estado especifico opcional por el cual filtrar.
+     * @param filtro Criterios opcionales de filtrado (departamento, municipio, estado, rango de fechas).
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      * @param pageable Configuracion de paginacion y ordenamiento.
-     * @return Pagina de alertas que cumplen con el criterio.
+     * @return Pagina de alertas que cumplen con los criterios de busqueda.
      */
-    Page<AlertaResponseDto> listarAlertas(EstadoAlerta estado, String emailUsuario, Pageable pageable);
+    Page<AlertaResponseDto> listarAlertas(FiltroAlertaDto filtro, String emailUsuario, Pageable pageable);
 
     /**
      * Obtiene el detalle de una alerta especifica perteneciente al ciudadano autenticado.

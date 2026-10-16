@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,9 +30,12 @@ import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
+
+import java.time.LocalDate;
 
 /**
  * Controlador REST para la publicacion y consulta de alertas por parte de ciudadanos.
@@ -99,16 +103,24 @@ public class AlertaController {
     }
 
     /**
-     * Consulta el listado general paginado de alertas comunitarias activas o filtradas por estado.
+     * Consulta el listado general paginado de alertas comunitarias con soporte de filtros.
+     * Permite filtrar opcionalmente por departamento, municipio, estado puntual y rango de fechas (fechaInicio y fechaFin).
+     * Por defecto retorna las alertas activas (PENDIENTE_REVISION, DIRECCIONADA, EN_GESTION).
      *
-     * @param estado Estado especifico opcional por el cual filtrar. Si no se envia, retorna alertas activas.
+     * @param departamento Nombre del departamento territorial a filtrar (opcional).
+     * @param municipio Nombre del municipio territorial a filtrar (opcional).
+     * @param estado Estado especifico por el cual filtrar (opcional).
+     * @param fechaInicio Fecha inicial para el rango de creacion (opcional, formato YYYY-MM-DD).
+     * @param fechaFin Fecha final para el rango de creacion (opcional, formato YYYY-MM-DD).
      * @param pageable Parametros de paginacion y ordenamiento.
      * @param authentication Contexto de seguridad inyectado con el usuario autenticado.
-     * @return Pagina de alertas comunitarias.
+     * @return Pagina de alertas comunitarias que cumplen con los filtros.
      */
-    @Operation(summary = "Listar alertas", description = "Obtiene un listado paginado de alertas activas o filtradas por estado, disponible para ciudadanos y miembros del equipo de respuesta.")
+    @Operation(summary = "Listar alertas con filtros", description = "Obtiene un listado paginado de alertas activas o filtradas por ubicacion (departamento, municipio), estado y rango de fechas.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de alertas recuperado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Parametros de filtro invalidos (ej. fecha de inicio posterior a fecha de fin)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado",
@@ -117,10 +129,21 @@ public class AlertaController {
     @GetMapping
     @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
     public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarAlertas(
+            @RequestParam(required = false) String departamento,
+            @RequestParam(required = false) String municipio,
             @RequestParam(required = false) EstadoAlerta estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
-        Page<AlertaResponseDto> alertas = alertaService.listarAlertas(estado, authentication.getName(), pageable);
+        FiltroAlertaDto filtro = FiltroAlertaDto.builder()
+                .departamento(departamento)
+                .municipio(municipio)
+                .estado(estado)
+                .fechaInicio(fechaInicio)
+                .fechaFin(fechaFin)
+                .build();
+        Page<AlertaResponseDto> alertas = alertaService.listarAlertas(filtro, authentication.getName(), pageable);
         return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas consultadas exitosamente"));
     }
 

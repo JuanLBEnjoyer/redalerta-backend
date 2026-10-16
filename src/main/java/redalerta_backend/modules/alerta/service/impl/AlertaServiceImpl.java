@@ -3,6 +3,7 @@ package redalerta_backend.modules.alerta.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redalerta_backend.common.exception.BadRequestException;
@@ -10,19 +11,19 @@ import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
 import redalerta_backend.modules.alerta.repository.AlertaRepository;
+import redalerta_backend.modules.alerta.repository.AlertaSpecification;
 import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
-
-import java.util.List;
 
 /**
  * Implementacion del servicio para la publicacion y consulta de alertas por parte de ciudadanos.
@@ -31,12 +32,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AlertaServiceImpl implements AlertaService {
-
-    private static final List<EstadoAlerta> ESTADOS_ACTIVOS = List.of(
-            EstadoAlerta.PENDIENTE_REVISION,
-            EstadoAlerta.DIRECCIONADA,
-            EstadoAlerta.EN_GESTION
-    );
 
     private final AlertaRepository alertaRepository;
     private final UsuarioRepository usuarioRepository;
@@ -90,15 +85,17 @@ public class AlertaServiceImpl implements AlertaService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<AlertaResponseDto> listarAlertas(EstadoAlerta estado, String emailUsuario, Pageable pageable) {
+    public Page<AlertaResponseDto> listarAlertas(FiltroAlertaDto filtro, String emailUsuario, Pageable pageable) {
         buscarUsuarioPorEmail(emailUsuario);
 
-        Page<Alerta> alertasPage;
-        if (estado != null) {
-            alertasPage = alertaRepository.findByEstadoOrderByFechaCreacionDesc(estado, pageable);
-        } else {
-            alertasPage = alertaRepository.findByEstadoInOrderByFechaCreacionDesc(ESTADOS_ACTIVOS, pageable);
+        if (filtro != null && filtro.getFechaInicio() != null && filtro.getFechaFin() != null) {
+            if (filtro.getFechaInicio().isAfter(filtro.getFechaFin())) {
+                throw new BadRequestException("La fecha de inicio no puede ser posterior a la fecha de fin");
+            }
         }
+
+        Specification<Alerta> spec = AlertaSpecification.conFiltros(filtro);
+        Page<Alerta> alertasPage = alertaRepository.findAll(spec, pageable);
 
         return alertasPage.map(alertaMapper::toResponseDto);
     }
