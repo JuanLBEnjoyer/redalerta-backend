@@ -225,9 +225,9 @@ class AlertaServiceTest {
     }
 
     @Test
-    @DisplayName("Debe lanzar UnauthorizedException si un ciudadano intenta consultar una alerta ajena")
-    void obtenerAlertaPorIdAccesoDenegadoOtroUsuario() {
-        Usuario otroUsuario = Usuario.builder().id(99L).build();
+    @DisplayName("Debe permitir a cualquier usuario autenticado consultar el detalle de una alerta ajena")
+    void obtenerAlertaPorIdAlertaAjenaExitoso() {
+        Usuario otroUsuario = Usuario.builder().id(99L).nombre("Maria Lopez").build();
         Alerta alertaAjena = Alerta.builder()
                 .id(5L)
                 .descripcion("Alerta de otro ciudadano")
@@ -236,13 +236,35 @@ class AlertaServiceTest {
 
         when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
         when(alertaRepository.findById(5L)).thenReturn(Optional.of(alertaAjena));
+        when(alertaMapper.toResponseDto(alertaAjena)).thenReturn(
+                AlertaResponseDto.builder().id(5L).descripcion("Alerta de otro ciudadano").autorNombre("Maria Lopez").build()
+        );
+
+        AlertaResponseDto respuesta = alertaService.obtenerAlertaPorId(5L, "carlos@example.com");
+
+        assertNotNull(respuesta);
+        assertEquals(5L, respuesta.getId());
+        assertEquals("Maria Lopez", respuesta.getAutorNombre());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si el usuario consultante esta inactivo al obtener detalle")
+    void obtenerAlertaPorIdUsuarioInactivo() {
+        Usuario usuarioInactivo = Usuario.builder()
+                .id(9L)
+                .email("inactivo@example.com")
+                .activo(false)
+                .build();
+
+        when(usuarioRepository.findByEmail("inactivo@example.com")).thenReturn(Optional.of(usuarioInactivo));
 
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
-                () -> alertaService.obtenerAlertaPorId(5L, "carlos@example.com")
+                () -> alertaService.obtenerAlertaPorId(5L, "inactivo@example.com")
         );
 
-        assertEquals("No tiene permisos para acceder a esta alerta", exception.getMessage());
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(alertaRepository, never()).findById(any());
     }
 
     @Test
