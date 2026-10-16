@@ -45,11 +45,11 @@ public interface AlertaService {
     Page<AlertaResponseDto> listarAlertas(FiltroAlertaDto filtro, String emailUsuario, Pageable pageable);
 
     /**
-     * Obtiene el detalle de una alerta especifica perteneciente al ciudadano autenticado.
+     * Obtiene el detalle exhaustivo de una alerta comunitaria por su identificador unico.
      *
      * @param id Identificador unico de la alerta.
-     * @param emailUsuario Correo del usuario autenticado.
-     * @return Detalle de la alerta encontrada.
+     * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+     * @return Detalle de la alerta encontrada en formato DTO.
      */
     AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario);
 

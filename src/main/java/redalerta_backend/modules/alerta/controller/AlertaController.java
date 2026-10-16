@@ -148,24 +148,26 @@ public class AlertaController {
     }
 
     /**
-     * Consulta el detalle de una alerta especifica reportada por el ciudadano autenticado.
+     * Consulta el detalle de una alerta especifica por su identificador.
+     * Permite a ciudadanos y miembros del equipo de respuesta visualizar la informacion completa
+     * del incidente, ubicacion territorial, estado, evidencias y datos del autor.
      *
-     * @param id Identificador de la alerta.
-     * @param authentication Contexto de seguridad inyectado.
+     * @param id Identificador unico de la alerta.
+     * @param authentication Contexto de seguridad inyectado con el usuario autenticado.
      * @return Detalle de la alerta encontrada.
      */
-    @Operation(summary = "Consultar alerta por ID", description = "Obtiene el detalle de una alerta especifica propia del ciudadano.")
+    @Operation(summary = "Consultar detalle de alerta por ID", description = "Obtiene el detalle exhaustivo de una alerta comunitaria especifica, disponible para ciudadanos y miembros del equipo de respuesta.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Alerta consultada exitosamente"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (no es el autor de la alerta)",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('CIUDADANO')")
+    @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
     public ResponseEntity<ApiResponse<AlertaResponseDto>> obtenerAlertaPorId(
             @PathVariable Long id,
             Authentication authentication) {

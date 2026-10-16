@@ -106,15 +106,10 @@ public class AlertaServiceImpl implements AlertaService {
     @Override
     @Transactional(readOnly = true)
     public AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario) {
-        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+        buscarUsuarioPorEmail(emailUsuario);
 
         Alerta alerta = alertaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
-
-        // Prevencion IDOR: Si es ciudadano, solo puede consultar alertas de su propia autoria
-        if (usuario.getRol() == Rol.ROLE_CIUDADANO && !alerta.getAutor().getId().equals(usuario.getId())) {
-            throw new UnauthorizedException("No tiene permisos para acceder a esta alerta");
-        }
 
         return alertaMapper.toResponseDto(alerta);
     }
