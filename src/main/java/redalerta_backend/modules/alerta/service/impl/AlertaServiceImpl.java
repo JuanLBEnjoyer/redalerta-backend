@@ -3,6 +3,7 @@ package redalerta_backend.modules.alerta.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redalerta_backend.common.exception.BadRequestException;
@@ -10,11 +11,13 @@ import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
 import redalerta_backend.modules.alerta.repository.AlertaRepository;
+import redalerta_backend.modules.alerta.repository.AlertaSpecification;
 import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
@@ -82,16 +85,31 @@ public class AlertaServiceImpl implements AlertaService {
      */
     @Override
     @Transactional(readOnly = true)
+    public Page<AlertaResponseDto> listarAlertas(FiltroAlertaDto filtro, String emailUsuario, Pageable pageable) {
+        buscarUsuarioPorEmail(emailUsuario);
+
+        if (filtro != null && filtro.getFechaInicio() != null && filtro.getFechaFin() != null) {
+            if (filtro.getFechaInicio().isAfter(filtro.getFechaFin())) {
+                throw new BadRequestException("La fecha de inicio no puede ser posterior a la fecha de fin");
+            }
+        }
+
+        Specification<Alerta> spec = AlertaSpecification.conFiltros(filtro);
+        Page<Alerta> alertasPage = alertaRepository.findAll(spec, pageable);
+
+        return alertasPage.map(alertaMapper::toResponseDto);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
     public AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario) {
-        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+        buscarUsuarioPorEmail(emailUsuario);
 
         Alerta alerta = alertaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
-
-        // Prevencion IDOR: Si es ciudadano, solo puede consultar alertas de su propia autoria
-        if (usuario.getRol() == Rol.ROLE_CIUDADANO && !alerta.getAutor().getId().equals(usuario.getId())) {
-            throw new UnauthorizedException("No tiene permisos para acceder a esta alerta");
-        }
 
         return alertaMapper.toResponseDto(alerta);
     }
