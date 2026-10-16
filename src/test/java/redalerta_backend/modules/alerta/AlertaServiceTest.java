@@ -497,4 +497,104 @@ class AlertaServiceTest {
         assertEquals("Solo se pueden modificar alertas en estado PENDIENTE_REVISION", exception.getMessage());
         verify(alertaRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("Debe listar alertas activas por defecto cuando no se especifica estado")
+    void listarAlertasSinEstadoDebeRetornarAlertasActivas() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Alerta alerta = Alerta.builder()
+                .id(1L)
+                .descripcion("Alerta activa")
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .autor(usuarioCiudadano)
+                .build();
+
+        List<EstadoAlerta> estadosActivos = List.of(
+                EstadoAlerta.PENDIENTE_REVISION,
+                EstadoAlerta.DIRECCIONADA,
+                EstadoAlerta.EN_GESTION
+        );
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findByEstadoInOrderByFechaCreacionDesc(estadosActivos, pageable))
+                .thenReturn(new PageImpl<>(List.of(alerta)));
+        when(alertaMapper.toResponseDto(alerta)).thenReturn(
+                AlertaResponseDto.builder().id(1L).descripcion("Alerta activa").estado(EstadoAlerta.PENDIENTE_REVISION).build()
+        );
+
+        Page<AlertaResponseDto> resultado = alertaService.listarAlertas(null, "carlos@example.com", pageable);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.getContent().size());
+        assertEquals(1L, resultado.getContent().getFirst().getId());
+        assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.getContent().getFirst().getEstado());
+        verify(alertaRepository).findByEstadoInOrderByFechaCreacionDesc(estadosActivos, pageable);
+        verify(alertaRepository, never()).findByEstadoOrderByFechaCreacionDesc(any(), any());
+    }
+
+    @Test
+    @DisplayName("Debe listar alertas filtrando por un estado especifico")
+    void listarAlertasConEstadoEspecificoDebeFiltrarPorEseEstado() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Alerta alertaResuelta = Alerta.builder()
+                .id(2L)
+                .descripcion("Alerta resuelta")
+                .estado(EstadoAlerta.RESUELTA)
+                .autor(usuarioCiudadano)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findByEstadoOrderByFechaCreacionDesc(EstadoAlerta.RESUELTA, pageable))
+                .thenReturn(new PageImpl<>(List.of(alertaResuelta)));
+        when(alertaMapper.toResponseDto(alertaResuelta)).thenReturn(
+                AlertaResponseDto.builder().id(2L).descripcion("Alerta resuelta").estado(EstadoAlerta.RESUELTA).build()
+        );
+
+        Page<AlertaResponseDto> resultado = alertaService.listarAlertas(EstadoAlerta.RESUELTA, "carlos@example.com", pageable);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.getContent().size());
+        assertEquals(2L, resultado.getContent().getFirst().getId());
+        assertEquals(EstadoAlerta.RESUELTA, resultado.getContent().getFirst().getEstado());
+        verify(alertaRepository).findByEstadoOrderByFechaCreacionDesc(EstadoAlerta.RESUELTA, pageable);
+        verify(alertaRepository, never()).findByEstadoInOrderByFechaCreacionDesc(any(), any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException si el usuario consultante no existe al listar alertas")
+    void listarAlertasUsuarioNoExiste() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(usuarioRepository.findByEmail("noexiste@example.com")).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> alertaService.listarAlertas(null, "noexiste@example.com", pageable)
+        );
+
+        assertTrue(exception.getMessage().contains("noexiste@example.com"));
+        verify(alertaRepository, never()).findByEstadoInOrderByFechaCreacionDesc(any(), any());
+        verify(alertaRepository, never()).findByEstadoOrderByFechaCreacionDesc(any(), any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException si el usuario consultante esta inactivo al listar alertas")
+    void listarAlertasUsuarioInactivo() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Usuario usuarioInactivo = Usuario.builder()
+                .id(9L)
+                .email("inactivo@example.com")
+                .activo(false)
+                .build();
+
+        when(usuarioRepository.findByEmail("inactivo@example.com")).thenReturn(Optional.of(usuarioInactivo));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> alertaService.listarAlertas(null, "inactivo@example.com", pageable)
+        );
+
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(alertaRepository, never()).findByEstadoInOrderByFechaCreacionDesc(any(), any());
+        verify(alertaRepository, never()).findByEstadoOrderByFechaCreacionDesc(any(), any());
+    }
 }
