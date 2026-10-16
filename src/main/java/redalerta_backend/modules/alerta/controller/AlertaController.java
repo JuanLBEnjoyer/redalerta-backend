@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
@@ -30,6 +31,7 @@ import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.service.AlertaService;
+import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 
 /**
  * Controlador REST para la publicacion y consulta de alertas por parte de ciudadanos.
@@ -93,6 +95,32 @@ public class AlertaController {
             @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
         Page<AlertaResponseDto> alertas = alertaService.listarMisAlertas(authentication.getName(), pageable);
+        return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas consultadas exitosamente"));
+    }
+
+    /**
+     * Consulta el listado general paginado de alertas comunitarias activas o filtradas por estado.
+     *
+     * @param estado Estado especifico opcional por el cual filtrar. Si no se envia, retorna alertas activas.
+     * @param pageable Parametros de paginacion y ordenamiento.
+     * @param authentication Contexto de seguridad inyectado con el usuario autenticado.
+     * @return Pagina de alertas comunitarias.
+     */
+    @Operation(summary = "Listar alertas", description = "Obtiene un listado paginado de alertas activas o filtradas por estado, disponible para ciudadanos y miembros del equipo de respuesta.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de alertas recuperado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping
+    @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarAlertas(
+            @RequestParam(required = false) EstadoAlerta estado,
+            @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication authentication) {
+        Page<AlertaResponseDto> alertas = alertaService.listarAlertas(estado, authentication.getName(), pageable);
         return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas consultadas exitosamente"));
     }
 

@@ -22,6 +22,8 @@ import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
+import java.util.List;
+
 /**
  * Implementacion del servicio para la publicacion y consulta de alertas por parte de ciudadanos.
  * Aplica principios Zero Trust y control de acceso contra vulnerabilidades IDOR.
@@ -29,6 +31,12 @@ import redalerta_backend.modules.usuario.valueobject.Rol;
 @Service
 @RequiredArgsConstructor
 public class AlertaServiceImpl implements AlertaService {
+
+    private static final List<EstadoAlerta> ESTADOS_ACTIVOS = List.of(
+            EstadoAlerta.PENDIENTE_REVISION,
+            EstadoAlerta.DIRECCIONADA,
+            EstadoAlerta.EN_GESTION
+    );
 
     private final AlertaRepository alertaRepository;
     private final UsuarioRepository usuarioRepository;
@@ -75,6 +83,24 @@ public class AlertaServiceImpl implements AlertaService {
         Usuario autor = buscarUsuarioPorEmail(emailUsuario);
         return alertaRepository.findByAutorIdOrderByFechaCreacionDesc(autor.getId(), pageable)
                 .map(alertaMapper::toResponseDto);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AlertaResponseDto> listarAlertas(EstadoAlerta estado, String emailUsuario, Pageable pageable) {
+        buscarUsuarioPorEmail(emailUsuario);
+
+        Page<Alerta> alertasPage;
+        if (estado != null) {
+            alertasPage = alertaRepository.findByEstadoOrderByFechaCreacionDesc(estado, pageable);
+        } else {
+            alertasPage = alertaRepository.findByEstadoInOrderByFechaCreacionDesc(ESTADOS_ACTIVOS, pageable);
+        }
+
+        return alertasPage.map(alertaMapper::toResponseDto);
     }
 
     /**
