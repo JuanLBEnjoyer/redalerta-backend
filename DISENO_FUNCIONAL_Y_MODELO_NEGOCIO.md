@@ -171,7 +171,7 @@ Las alertas permiten el anexo voluntario de fotografias (ej. registro visual de 
 
 ### Modulo de Alertas (Ciudadano y Equipo de Respuesta)
 - `POST /api/v1/alertas`: Publicacion de una nueva alerta con descripcion, ubicacion y evidencias opcionales (Estado inicial: `PENDIENTE_REVISION`).
-- `GET /api/v1/alertas`: Consulta paginada del listado general de alertas activas (por defecto) o filtradas por estado.
+- `GET /api/v1/alertas`: Consulta paginada del listado general de alertas con filtros dinamicos opcionales (departamento, municipio, estado puntual y rango de fechas `fechaInicio`/`fechaFin`). Por defecto retorna alertas activas (`PENDIENTE_REVISION`, `DIRECCIONADA`, `EN_GESTION`).
 - `GET /api/v1/alertas/mis-alertas`: Consulta paginada del historial de alertas generadas por el propio ciudadano.
 - `GET /api/v1/alertas/{id}`: Detalle exhaustivo de una alerta puntual perteneciente al ciudadano (con proteccion estricta contra acceso no autorizado a reportes ajenos).
 - `PUT /api/v1/alertas/{id}`: Modificacion de una alerta propia en estado PENDIENTE_REVISION.
