@@ -11,11 +11,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.UbicacionAlertaDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
@@ -28,11 +30,13 @@ import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -285,7 +289,7 @@ class AlertaServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("999"));
-        verify(alertaRepository, never()).delete(any());
+        verify(alertaRepository, never()).delete(any(Alerta.class));
     }
 
     @Test
@@ -305,7 +309,7 @@ class AlertaServiceTest {
         );
 
         assertEquals("El usuario se encuentra inactivo", exception.getMessage());
-        verify(alertaRepository, never()).delete(any());
+        verify(alertaRepository, never()).delete(any(Alerta.class));
     }
 
     @Test
@@ -328,7 +332,7 @@ class AlertaServiceTest {
         );
 
         assertEquals("No tiene permisos para eliminar esta alerta", exception.getMessage());
-        verify(alertaRepository, never()).delete(any());
+        verify(alertaRepository, never()).delete(any(Alerta.class));
     }
 
     @Test
@@ -350,7 +354,7 @@ class AlertaServiceTest {
         );
 
         assertEquals("Solo se pueden eliminar alertas en estado PENDIENTE_REVISION", exception.getMessage());
-        verify(alertaRepository, never()).delete(any());
+        verify(alertaRepository, never()).delete(any(Alerta.class));
     }
 
     @Test
@@ -499,8 +503,8 @@ class AlertaServiceTest {
     }
 
     @Test
-    @DisplayName("Debe listar alertas activas por defecto cuando no se especifica estado")
-    void listarAlertasSinEstadoDebeRetornarAlertasActivas() {
+    @DisplayName("Debe listar alertas activas por defecto cuando no se especifican filtros")
+    void listarAlertasSinFiltroDebeRetornarAlertasActivas() {
         Pageable pageable = PageRequest.of(0, 10);
         Alerta alerta = Alerta.builder()
                 .id(1L)
@@ -509,14 +513,8 @@ class AlertaServiceTest {
                 .autor(usuarioCiudadano)
                 .build();
 
-        List<EstadoAlerta> estadosActivos = List.of(
-                EstadoAlerta.PENDIENTE_REVISION,
-                EstadoAlerta.DIRECCIONADA,
-                EstadoAlerta.EN_GESTION
-        );
-
         when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
-        when(alertaRepository.findByEstadoInOrderByFechaCreacionDesc(estadosActivos, pageable))
+        when(alertaRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(alerta)));
         when(alertaMapper.toResponseDto(alerta)).thenReturn(
                 AlertaResponseDto.builder().id(1L).descripcion("Alerta activa").estado(EstadoAlerta.PENDIENTE_REVISION).build()
@@ -528,36 +526,62 @@ class AlertaServiceTest {
         assertEquals(1, resultado.getContent().size());
         assertEquals(1L, resultado.getContent().getFirst().getId());
         assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.getContent().getFirst().getEstado());
-        verify(alertaRepository).findByEstadoInOrderByFechaCreacionDesc(estadosActivos, pageable);
-        verify(alertaRepository, never()).findByEstadoOrderByFechaCreacionDesc(any(), any());
+        verify(alertaRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
-    @DisplayName("Debe listar alertas filtrando por un estado especifico")
-    void listarAlertasConEstadoEspecificoDebeFiltrarPorEseEstado() {
+    @DisplayName("Debe listar alertas aplicando criterios de filtrado territorial, estado y fechas")
+    void listarAlertasConFiltrosCompletosExitoso() {
         Pageable pageable = PageRequest.of(0, 10);
-        Alerta alertaResuelta = Alerta.builder()
-                .id(2L)
-                .descripcion("Alerta resuelta")
-                .estado(EstadoAlerta.RESUELTA)
+        FiltroAlertaDto filtro = FiltroAlertaDto.builder()
+                .departamento("Quindio")
+                .municipio("Armenia")
+                .estado(EstadoAlerta.EN_GESTION)
+                .fechaInicio(LocalDate.now().minusDays(5))
+                .fechaFin(LocalDate.now())
+                .build();
+
+        Alerta alerta = Alerta.builder()
+                .id(3L)
+                .descripcion("Inundacion en sector norte")
+                .estado(EstadoAlerta.EN_GESTION)
                 .autor(usuarioCiudadano)
                 .build();
 
         when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
-        when(alertaRepository.findByEstadoOrderByFechaCreacionDesc(EstadoAlerta.RESUELTA, pageable))
-                .thenReturn(new PageImpl<>(List.of(alertaResuelta)));
-        when(alertaMapper.toResponseDto(alertaResuelta)).thenReturn(
-                AlertaResponseDto.builder().id(2L).descripcion("Alerta resuelta").estado(EstadoAlerta.RESUELTA).build()
+        when(alertaRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(alerta)));
+        when(alertaMapper.toResponseDto(alerta)).thenReturn(
+                AlertaResponseDto.builder().id(3L).descripcion("Inundacion en sector norte").estado(EstadoAlerta.EN_GESTION).build()
         );
 
-        Page<AlertaResponseDto> resultado = alertaService.listarAlertas(EstadoAlerta.RESUELTA, "carlos@example.com", pageable);
+        Page<AlertaResponseDto> resultado = alertaService.listarAlertas(filtro, "carlos@example.com", pageable);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.getContent().size());
-        assertEquals(2L, resultado.getContent().getFirst().getId());
-        assertEquals(EstadoAlerta.RESUELTA, resultado.getContent().getFirst().getEstado());
-        verify(alertaRepository).findByEstadoOrderByFechaCreacionDesc(EstadoAlerta.RESUELTA, pageable);
-        verify(alertaRepository, never()).findByEstadoInOrderByFechaCreacionDesc(any(), any());
+        assertEquals(3L, resultado.getContent().getFirst().getId());
+        assertEquals(EstadoAlerta.EN_GESTION, resultado.getContent().getFirst().getEstado());
+        verify(alertaRepository).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("Debe lanzar BadRequestException si la fecha de inicio es posterior a la fecha de fin")
+    void listarAlertasFechaInicioPosteriorAFechaFin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        FiltroAlertaDto filtroInvalido = FiltroAlertaDto.builder()
+                .fechaInicio(LocalDate.of(2026, 10, 20))
+                .fechaFin(LocalDate.of(2026, 10, 10))
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> alertaService.listarAlertas(filtroInvalido, "carlos@example.com", pageable)
+        );
+
+        assertEquals("La fecha de inicio no puede ser posterior a la fecha de fin", exception.getMessage());
+        verify(alertaRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -572,8 +596,7 @@ class AlertaServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("noexiste@example.com"));
-        verify(alertaRepository, never()).findByEstadoInOrderByFechaCreacionDesc(any(), any());
-        verify(alertaRepository, never()).findByEstadoOrderByFechaCreacionDesc(any(), any());
+        verify(alertaRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -594,7 +617,6 @@ class AlertaServiceTest {
         );
 
         assertEquals("El usuario se encuentra inactivo", exception.getMessage());
-        verify(alertaRepository, never()).findByEstadoInOrderByFechaCreacionDesc(any(), any());
-        verify(alertaRepository, never()).findByEstadoOrderByFechaCreacionDesc(any(), any());
+        verify(alertaRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 }
