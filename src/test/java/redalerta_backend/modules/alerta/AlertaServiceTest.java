@@ -30,6 +30,9 @@ import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
+import org.mockito.ArgumentCaptor;
+import redalerta_backend.modules.usuario.valueobject.Ubicacion;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -192,8 +195,8 @@ class AlertaServiceTest {
         when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
         when(alertaRepository.findByAutorIdOrderByFechaCreacionDesc(1L, pageable))
                 .thenReturn(new PageImpl<>(List.of(alerta)));
-        when(alertaMapper.toResponseDto(alerta)).thenReturn(
-                AlertaResponseDto.builder().id(1L).descripcion("Incidente en la via").build()
+        when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                AlertaResponseDto.builder().id(1L).descripcion("Incidente en la via").totalEvidencias(0).build()
         );
 
         Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas("carlos@example.com", pageable);
@@ -538,8 +541,8 @@ class AlertaServiceTest {
         when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
         when(alertaRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(alerta)));
-        when(alertaMapper.toResponseDto(alerta)).thenReturn(
-                AlertaResponseDto.builder().id(1L).descripcion("Alerta activa").estado(EstadoAlerta.PENDIENTE_REVISION).build()
+        when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                AlertaResponseDto.builder().id(1L).descripcion("Alerta activa").estado(EstadoAlerta.PENDIENTE_REVISION).totalEvidencias(0).build()
         );
 
         Page<AlertaResponseDto> resultado = alertaService.listarAlertas(null, "carlos@example.com", pageable);
@@ -573,8 +576,8 @@ class AlertaServiceTest {
         when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
         when(alertaRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(alerta)));
-        when(alertaMapper.toResponseDto(alerta)).thenReturn(
-                AlertaResponseDto.builder().id(3L).descripcion("Inundacion en sector norte").estado(EstadoAlerta.EN_GESTION).build()
+        when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                AlertaResponseDto.builder().id(3L).descripcion("Inundacion en sector norte").estado(EstadoAlerta.EN_GESTION).totalEvidencias(0).build()
         );
 
         Page<AlertaResponseDto> resultado = alertaService.listarAlertas(filtro, "carlos@example.com", pageable);
@@ -640,5 +643,95 @@ class AlertaServiceTest {
 
         assertEquals("El usuario se encuentra inactivo", exception.getMessage());
         verify(alertaRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Debe crear una alerta con indicador de anonimato activo")
+    void crearAlertaAnonimaExitoso() {
+        CrearAlertaRequestDto requestAnonimo = CrearAlertaRequestDto.builder()
+                .descripcion("Robo en curso cerca al parque principal")
+                .ubicacion(ubicacionDto)
+                .esAnonimo(true)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaMapper.toUbicacionAlerta(ubicacionDto)).thenReturn(ubicacionVO);
+        when(alertaRepository.save(any(Alerta.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alertaMapper.toResponseDto(any(Alerta.class))).thenAnswer(invocation -> {
+            Alerta a = invocation.getArgument(0);
+            return AlertaResponseDto.builder()
+                    .id(100L)
+                    .descripcion(a.getDescripcion())
+                    .autorNombre("Anónimo")
+                    .autorId(null)
+                    .esAnonimo(a.getEsAnonimo())
+                    .build();
+        });
+
+        AlertaResponseDto respuesta = alertaService.crearAlerta(requestAnonimo, "carlos@example.com");
+
+        assertNotNull(respuesta);
+        assertTrue(respuesta.getEsAnonimo());
+        assertEquals("Anónimo", respuesta.getAutorNombre());
+        assertNull(respuesta.getAutorId());
+
+        ArgumentCaptor<Alerta> alertaCaptor = ArgumentCaptor.forClass(Alerta.class);
+        verify(alertaRepository).save(alertaCaptor.capture());
+        assertTrue(alertaCaptor.getValue().getEsAnonimo());
+    }
+
+    @Test
+    @DisplayName("Debe permitir modificar el indicador de anonimato de una alerta en PENDIENTE_REVISION")
+    void modificarAlertaAnonimatoExitoso() {
+        Alerta alertaOriginal = Alerta.builder()
+                .id(20L)
+                .descripcion("Descripcion original")
+                .ubicacion(ubicacionVO)
+                .autor(usuarioCiudadano)
+                .esAnonimo(false)
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .build();
+
+        ModificarAlertaRequestDto requestModificar = ModificarAlertaRequestDto.builder()
+                .descripcion("Descripcion modificada")
+                .ubicacion(ubicacionDto)
+                .esAnonimo(true)
+                .build();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findById(20L)).thenReturn(Optional.of(alertaOriginal));
+        when(alertaMapper.toUbicacionAlerta(ubicacionDto)).thenReturn(ubicacionVO);
+        when(alertaRepository.save(any(Alerta.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(
+                AlertaResponseDto.builder().id(20L).esAnonimo(true).autorNombre("Anónimo").build()
+        );
+
+        AlertaResponseDto resultado = alertaService.modificarAlerta(20L, requestModificar, "carlos@example.com");
+
+        assertNotNull(resultado);
+        assertTrue(resultado.getEsAnonimo());
+        assertTrue(alertaOriginal.getEsAnonimo());
+        verify(alertaRepository).save(alertaOriginal);
+    }
+
+    @Test
+    @DisplayName("Debe asignar por defecto la ubicacion del usuario si no se envia filtro territorial al listar alertas")
+    void listarAlertasSinFiltroUbicacionTomaUbicacionUsuario() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Ubicacion ubicacionUsuario = new Ubicacion("Antioquia", "Medellin", "Calle 50 # 10-20");
+        usuarioCiudadano.setUbicacion(ubicacionUsuario);
+
+        FiltroAlertaDto filtroVacio = new FiltroAlertaDto();
+
+        when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+        when(alertaRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        Page<AlertaResponseDto> resultado = alertaService.listarAlertas(filtroVacio, "carlos@example.com", pageable);
+
+        assertNotNull(resultado);
+        assertEquals("Antioquia", filtroVacio.getDepartamento());
+        assertEquals("Medellin", filtroVacio.getMunicipio());
+        verify(alertaRepository).findAll(any(Specification.class), eq(pageable));
     }
 }
