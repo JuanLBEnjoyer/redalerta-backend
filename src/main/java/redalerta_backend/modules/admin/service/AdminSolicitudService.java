@@ -22,4 +22,13 @@ public interface AdminSolicitudService {
      * @return Pagina de solicitudes de registro coincidentes.
      */
     Page<SolicitudRegistroResponseDto> listarSolicitudes(EstadoSolicitud estado, Rol rol, String emailAdmin, Pageable pageable);
+
+    /**
+     * Consulta el detalle y evidencias de una solicitud de registro especifica por su identificador.
+     *
+     * @param id Identificador unico de la solicitud de registro.
+     * @param emailAdmin Correo del administrador autenticado obtenido del token JWT.
+     * @return DTO con la informacion detallada de la postulacion y sus soportes probatorios.
+     */
+    SolicitudRegistroResponseDto obtenerSolicitudPorId(Long id, String emailAdmin);
 }

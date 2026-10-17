@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,5 +75,33 @@ public class AdminSolicitudController {
                 pageable
         );
         return ResponseEntity.ok(ApiResponse.success(solicitudes, "Bandeja de solicitudes consultada exitosamente"));
+    }
+
+    /**
+     * Consulta el detalle exhaustivo y evidencias de una solicitud de registro por su identificador.
+     *
+     * @param id Identificador unico de la solicitud de registro.
+     * @param authentication Contexto de seguridad con las credenciales del administrador autenticado.
+     * @return Detalle de la postulacion y sus soportes documentales.
+     */
+    @Operation(
+            summary = "Consultar detalle y evidencias de una postulacion",
+            description = "Obtiene el detalle exhaustivo de una solicitud de registro institucional o comunitaria, incluyendo sus soportes probatorios y datos del postulante."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Detalle de la solicitud recuperado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o cuenta inactiva",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol ROLE_ADMIN)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Solicitud de registro no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<SolicitudRegistroResponseDto>> obtenerSolicitudPorId(
+            @PathVariable Long id,
+            Authentication authentication) {
+        SolicitudRegistroResponseDto solicitud = adminSolicitudService.obtenerSolicitudPorId(id, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(solicitud, "Detalle de la solicitud consultado exitosamente"));
     }
 }

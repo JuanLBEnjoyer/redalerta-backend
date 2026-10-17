@@ -54,6 +54,20 @@ public class AdminSolicitudServiceImpl implements AdminSolicitudService {
         return paginaSolicitudes.map(solicitudRegistroMapper::toResponseDto);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public SolicitudRegistroResponseDto obtenerSolicitudPorId(Long id, String emailAdmin) {
+        validarAdministrador(emailAdmin);
+
+        SolicitudRegistro solicitud = solicitudRegistroRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud de registro no encontrada con id: " + id));
+
+        return solicitudRegistroMapper.toResponseDto(solicitud);
+    }
+
     private void validarAdministrador(String emailAdmin) {
         Usuario admin = usuarioRepository.findByEmail(emailAdmin)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + emailAdmin));
