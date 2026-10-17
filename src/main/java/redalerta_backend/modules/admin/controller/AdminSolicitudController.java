@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,11 +17,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
+import redalerta_backend.modules.admin.dto.AprobarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.service.AdminSolicitudService;
 import redalerta_backend.modules.admin.valueobject.EstadoSolicitud;
@@ -103,5 +107,41 @@ public class AdminSolicitudController {
             Authentication authentication) {
         SolicitudRegistroResponseDto solicitud = adminSolicitudService.obtenerSolicitudPorId(id, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(solicitud, "Detalle de la solicitud consultado exitosamente"));
+    }
+
+    /**
+     * Aprueba una postulacion de registro en estado PENDIENTE y activa la cuenta de usuario.
+     *
+     * @param id Identificador unico de la solicitud de registro.
+     * @param request Payload con observaciones opcionales del administrador.
+     * @param authentication Contexto de seguridad con las credenciales del administrador autenticado.
+     * @return Solicitud de registro con estado APROBADA y cuenta activada.
+     */
+    @Operation(
+            summary = "Aprobar solicitud de registro y activar cuenta",
+            description = "Aprueba una solicitud de registro en estado PENDIENTE, activa la cuenta de usuario correspondiente para que pueda operar en la plataforma y registra la trazabilidad del administrador auditor."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Solicitud aprobada y cuenta activada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "La solicitud no se encuentra en estado PENDIENTE o datos invalidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o cuenta inactiva",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol ROLE_ADMIN)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Solicitud de registro no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{id}/aprobar")
+    public ResponseEntity<ApiResponse<SolicitudRegistroResponseDto>> aprobarSolicitud(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) AprobarSolicitudRequestDto request,
+            Authentication authentication) {
+        SolicitudRegistroResponseDto solicitud = adminSolicitudService.aprobarSolicitud(
+                id,
+                request,
+                authentication.getName()
+        );
+        return ResponseEntity.ok(ApiResponse.success(solicitud, "Solicitud de registro aprobada y cuenta activada exitosamente"));
     }
 }
