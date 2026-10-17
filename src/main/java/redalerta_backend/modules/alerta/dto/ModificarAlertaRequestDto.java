@@ -34,4 +34,7 @@ public class ModificarAlertaRequestDto {
 
     @Schema(description = "Lista actualizada de URLs de evidencias fotográficas")
     private List<String> evidenciasUrls;
+
+    @Schema(description = "Permite cambiar la visibilidad de la alerta a anonima o publica", example = "true")
+    private Boolean esAnonimo;
 }

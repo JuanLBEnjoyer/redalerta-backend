@@ -34,4 +34,8 @@ public class CrearAlertaRequestDto {
 
     @Schema(description = "Lista opcional de URLs de evidencias previamente cargadas")
     private List<String> evidenciasUrls;
+
+    @Builder.Default
+    @Schema(description = "Indica si la alerta debe publicarse de forma anonima en el feed", example = "false")
+    private Boolean esAnonimo = false;
 }

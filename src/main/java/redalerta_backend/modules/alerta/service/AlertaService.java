@@ -6,7 +6,6 @@ import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
-import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 
 /**
  * Contrato de servicio para la creacion y consulta de alertas comunitarias.
@@ -16,38 +15,43 @@ public interface AlertaService {
     /**
      * Registra una nueva alerta comunitaria asociada al ciudadano autenticado.
      *
-     * @param request Datos de la alerta reportada por el ciudadano.
+     * @param request      Datos de la alerta reportada por el ciudadano.
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      * @return Alerta registrada con su estado inicial.
      */
     AlertaResponseDto crearAlerta(CrearAlertaRequestDto request, String emailUsuario);
 
     /**
-     * Retorna el listado paginado de alertas creadas exclusivamente por el ciudadano autenticado.
+     * Retorna el listado paginado de alertas creadas exclusivamente por el
+     * ciudadano autenticado.
      *
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
-     * @param pageable Configuracion de paginacion y ordenamiento.
+     * @param pageable     Configuracion de paginacion y ordenamiento.
      * @return Pagina de alertas del ciudadano.
      */
     Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable);
 
     /**
-     * Retorna el listado paginado de alertas comunitarias aplicando los filtros especificados.
+     * Retorna el listado paginado de alertas comunitarias aplicando los filtros
+     * especificados.
      * Soporta filtrado por departamento, municipio, estado y rango de fechas.
-     * Si no se especifica un estado puntual, retorna por defecto las alertas en estados activos
+     * Si no se especifica un estado puntual, retorna por defecto las alertas en
+     * estados activos
      * (PENDIENTE_REVISION, DIRECCIONADA, EN_GESTION).
      *
-     * @param filtro Criterios opcionales de filtrado (departamento, municipio, estado, rango de fechas).
+     * @param filtro       Criterios opcionales de filtrado (departamento,
+     *                     municipio, estado, rango de fechas).
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
-     * @param pageable Configuracion de paginacion y ordenamiento.
+     * @param pageable     Configuracion de paginacion y ordenamiento.
      * @return Pagina de alertas que cumplen con los criterios de busqueda.
      */
     Page<AlertaResponseDto> listarAlertas(FiltroAlertaDto filtro, String emailUsuario, Pageable pageable);
 
     /**
-     * Obtiene el detalle exhaustivo de una alerta comunitaria por su identificador unico.
+     * Obtiene el detalle exhaustivo de una alerta comunitaria por su identificador
+     * unico.
      *
-     * @param id Identificador unico de la alerta.
+     * @param id           Identificador unico de la alerta.
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      * @return Detalle de la alerta encontrada en formato DTO.
      */
@@ -55,19 +59,22 @@ public interface AlertaService {
 
     /**
      * Elimina una alerta comunitaria creada por el ciudadano autenticado.
-     * Unicamente se permite la eliminacion si la alerta se encuentra en estado PENDIENTE_REVISION.
+     * Unicamente se permite la eliminacion si la alerta se encuentra en estado
+     * PENDIENTE_REVISION.
      *
-     * @param id Identificador unico de la alerta a eliminar.
+     * @param id           Identificador unico de la alerta a eliminar.
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      */
     void eliminarAlerta(Long id, String emailUsuario);
 
     /**
      * Modifica una alerta comunitaria creada por el ciudadano autenticado.
-     * Unicamente se permite la modificacion si la alerta se encuentra en estado PENDIENTE_REVISION.
+     * Unicamente se permite la modificacion si la alerta se encuentra en estado
+     * PENDIENTE_REVISION.
      *
-     * @param id Identificador unico de la alerta a modificar.
-     * @param request Datos actualizados de la alerta (descripcion, ubicacion, evidencias).
+     * @param id           Identificador unico de la alerta a modificar.
+     * @param request      Datos actualizados de la alerta (descripcion, ubicacion,
+     *                     evidencias).
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      * @return Alerta actualizada en su representacion DTO.
      */

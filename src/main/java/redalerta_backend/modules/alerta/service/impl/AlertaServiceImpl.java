@@ -23,11 +23,12 @@ import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
-import redalerta_backend.modules.usuario.valueobject.Rol;
 
 /**
- * Implementacion del servicio para la publicacion y consulta de alertas por parte de ciudadanos.
- * Aplica principios Zero Trust y control de acceso contra vulnerabilidades IDOR.
+ * Implementacion del servicio para la publicacion y consulta de alertas por
+ * parte de ciudadanos.
+ * Aplica principios Zero Trust y control de acceso contra vulnerabilidades
+ * IDOR.
  */
 @Service
 @RequiredArgsConstructor
@@ -46,11 +47,13 @@ public class AlertaServiceImpl implements AlertaService {
         Usuario autor = buscarUsuarioPorEmail(emailUsuario);
 
         UbicacionAlerta ubicacion = alertaMapper.toUbicacionAlerta(request.getUbicacion());
+        Boolean esAnonimo = Boolean.TRUE.equals(request.getEsAnonimo());
 
         Alerta alerta = Alerta.builder()
                 .descripcion(request.getDescripcion().trim())
                 .ubicacion(ubicacion)
                 .autor(autor)
+                .esAnonimo(esAnonimo)
                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                 .build();
 
@@ -77,7 +80,7 @@ public class AlertaServiceImpl implements AlertaService {
     public Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable) {
         Usuario autor = buscarUsuarioPorEmail(emailUsuario);
         return alertaRepository.findByAutorIdOrderByFechaCreacionDesc(autor.getId(), pageable)
-                .map(alertaMapper::toResponseDto);
+                .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
     }
 
     /**
@@ -86,9 +89,22 @@ public class AlertaServiceImpl implements AlertaService {
     @Override
     @Transactional(readOnly = true)
     public Page<AlertaResponseDto> listarAlertas(FiltroAlertaDto filtro, String emailUsuario, Pageable pageable) {
-        buscarUsuarioPorEmail(emailUsuario);
+        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
 
-        if (filtro != null && filtro.getFechaInicio() != null && filtro.getFechaFin() != null) {
+        if (filtro == null) {
+            filtro = new FiltroAlertaDto();
+        }
+
+        // Si no se proporcionaron filtros geograficos, por defecto se filtran por la ubicacion del usuario
+        if ((filtro.getDepartamento() == null || filtro.getDepartamento().isBlank()) &&
+                (filtro.getMunicipio() == null || filtro.getMunicipio().isBlank())) {
+            if (usuario.getUbicacion() != null) {
+                filtro.setDepartamento(usuario.getUbicacion().departamento());
+                filtro.setMunicipio(usuario.getUbicacion().municipio());
+            }
+        }
+
+        if (filtro.getFechaInicio() != null && filtro.getFechaFin() != null) {
             if (filtro.getFechaInicio().isAfter(filtro.getFechaFin())) {
                 throw new BadRequestException("La fecha de inicio no puede ser posterior a la fecha de fin");
             }
@@ -97,7 +113,7 @@ public class AlertaServiceImpl implements AlertaService {
         Specification<Alerta> spec = AlertaSpecification.conFiltros(filtro);
         Page<Alerta> alertasPage = alertaRepository.findAll(spec, pageable);
 
-        return alertasPage.map(alertaMapper::toResponseDto);
+        return alertasPage.map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
     }
 
     /**
@@ -130,7 +146,8 @@ public class AlertaServiceImpl implements AlertaService {
             throw new UnauthorizedException("No tiene permisos para eliminar esta alerta");
         }
 
-        // Regla de negocio: Solo se pueden eliminar alertas en estado PENDIENTE_REVISION
+        // Regla de negocio: Solo se pueden eliminar alertas en estado
+        // PENDIENTE_REVISION
         if (alerta.getEstado() != EstadoAlerta.PENDIENTE_REVISION) {
             throw new BadRequestException("Solo se pueden eliminar alertas en estado PENDIENTE_REVISION");
         }
@@ -154,7 +171,8 @@ public class AlertaServiceImpl implements AlertaService {
             throw new UnauthorizedException("No tiene permisos para modificar esta alerta");
         }
 
-        // Regla de negocio: Solo se pueden modificar alertas en estado PENDIENTE_REVISION
+        // Regla de negocio: Solo se pueden modificar alertas en estado
+        // PENDIENTE_REVISION
         if (alerta.getEstado() != EstadoAlerta.PENDIENTE_REVISION) {
             throw new BadRequestException("Solo se pueden modificar alertas en estado PENDIENTE_REVISION");
         }
@@ -172,6 +190,10 @@ public class AlertaServiceImpl implements AlertaService {
                     alerta.agregarEvidencia(evidencia);
                 }
             }
+        }
+
+        if (request.getEsAnonimo() != null) {
+            alerta.setEsAnonimo(request.getEsAnonimo());
         }
 
         Alerta alertaActualizada = alertaRepository.save(alerta);

@@ -55,6 +55,10 @@ public class Alerta {
     @EqualsAndHashCode.Exclude
     private Usuario autor;
 
+    @Column(name = "es_anonimo", nullable = false)
+    @Builder.Default
+    private Boolean esAnonimo = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
