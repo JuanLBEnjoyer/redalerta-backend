@@ -1,6 +1,7 @@
 package redalerta_backend.modules.usuario.mapper;
 
 import org.springframework.stereotype.Component;
+import redalerta_backend.modules.auth.dto.UsuarioSesionDto;
 import redalerta_backend.modules.usuario.dto.CaracterizacionResponseDto;
 import redalerta_backend.modules.usuario.dto.DocumentoResponseDto;
 import redalerta_backend.modules.usuario.dto.UbicacionRequestDto;
@@ -13,6 +14,19 @@ import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 @Component
 public class UsuarioMapper {
+
+    public UsuarioSesionDto toSesionDto(Usuario usuario) {
+        if (usuario == null) {
+            return null;
+        }
+
+        return UsuarioSesionDto.builder()
+                .id(usuario.getId())
+                .nombre(usuario.getNombre())
+                .email(usuario.getEmail())
+                .rol(usuario.getRol())
+                .build();
+    }
 
     public UsuarioResponseDto toResponseDto(Usuario usuario) {
         if (usuario == null) {

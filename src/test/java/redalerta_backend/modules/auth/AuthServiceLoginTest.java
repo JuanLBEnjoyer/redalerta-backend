@@ -14,6 +14,7 @@ import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.config.security.JwtService;
 import redalerta_backend.modules.auth.dto.LoginRequestDto;
 import redalerta_backend.modules.auth.dto.LoginResponseDto;
+import redalerta_backend.modules.auth.dto.UsuarioSesionDto;
 import redalerta_backend.modules.auth.service.impl.AuthServiceImpl;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
@@ -66,13 +67,12 @@ class AuthServiceLoginTest {
         when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
         when(passwordEncoder.matches("Password123*", "$2a$10$hashedpassword")).thenReturn(true);
         when(jwtService.generateToken(usuarioMock)).thenReturn("mocked-jwt-token");
-        when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
-                UsuarioResponseDto.builder()
+        when(usuarioMapper.toSesionDto(usuarioMock)).thenReturn(
+                UsuarioSesionDto.builder()
                         .id(1L)
                         .nombre("Juan Perez")
                         .email("juan@example.com")
                         .rol(Rol.ROLE_CIUDADANO)
-                        .activo(true)
                         .build());
 
         LoginResponseDto response = authService.login(request);
@@ -80,7 +80,11 @@ class AuthServiceLoginTest {
         assertNotNull(response);
         assertEquals("mocked-jwt-token", response.getToken());
         assertEquals("Bearer", response.getTipo());
+        assertNotNull(response.getUsuario());
+        assertEquals(1L, response.getUsuario().getId());
+        assertEquals("Juan Perez", response.getUsuario().getNombre());
         assertEquals("juan@example.com", response.getUsuario().getEmail());
+        assertEquals(Rol.ROLE_CIUDADANO, response.getUsuario().getRol());
     }
 
     @Test

@@ -12,6 +12,7 @@ import redalerta_backend.config.security.JwtService;
 import redalerta_backend.modules.auth.dto.LoginRequestDto;
 import redalerta_backend.modules.auth.dto.LoginResponseDto;
 import redalerta_backend.modules.auth.dto.RegistroRequestDto;
+import redalerta_backend.modules.auth.dto.UsuarioSesionDto;
 import redalerta_backend.modules.auth.service.AuthService;
 import redalerta_backend.modules.usuario.dto.CaracterizacionRequestDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
@@ -121,12 +122,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String token = jwtService.generateToken(usuario);
-        UsuarioResponseDto usuarioDto = usuarioMapper.toResponseDto(usuario);
+        UsuarioSesionDto usuarioSesionDto = usuarioMapper.toSesionDto(usuario);
 
         return LoginResponseDto.builder()
                 .token(token)
                 .tipo("Bearer")
-                .usuario(usuarioDto)
+                .usuario(usuarioSesionDto)
                 .build();
     }
 
