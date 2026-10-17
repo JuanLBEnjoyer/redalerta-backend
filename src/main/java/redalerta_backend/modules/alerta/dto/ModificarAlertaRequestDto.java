@@ -32,7 +32,8 @@ public class ModificarAlertaRequestDto {
     @Schema(description = "Ubicacion territorial actualizada del incidente")
     private UbicacionAlertaDto ubicacion;
 
-    @Schema(description = "Lista actualizada de URLs de evidencias fotográficas")
+    @Size(max = 5, message = "No se pueden adjuntar mas de 5 evidencias por alerta")
+    @Schema(description = "Lista actualizada de URLs de evidencias fotograficas (maximo 5 imagenes)")
     private List<String> evidenciasUrls;
 
     @Schema(description = "Permite cambiar la visibilidad de la alerta a anonima o publica", example = "true")

@@ -1,6 +1,7 @@
 package redalerta_backend.modules.alerta.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -26,12 +28,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
 import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 
@@ -74,6 +78,38 @@ public class AlertaController {
         AlertaResponseDto alertaCreada = alertaService.crearAlerta(request, authentication.getName());
         return new ResponseEntity<>(
                 ApiResponse.success(alertaCreada, "Alerta publicada exitosamente"),
+                HttpStatus.CREATED
+        );
+    }
+
+    /**
+     * Permite a un ciudadano autenticado subir y optimizar una evidencia fotografica para su posterior anexo en una alerta.
+     *
+     * @param archivo Archivo binario de imagen (JPEG, PNG o WebP).
+     * @param authentication Contexto de seguridad con el usuario emisor del token.
+     * @return DTO con la URL y metadatos de la imagen almacenada en S3 y codigo HTTP 201 CREATED.
+     */
+    @Operation(summary = "Subir evidencia fotografica", description = "Recibe un archivo de imagen, valida su formato (JPEG, PNG o WebP), lo comprime de forma automatica y lo almacena en AWS S3.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Evidencia fotografica subida y optimizada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Archivo vacio, formato no admitido o imagen corrupta",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol CIUDADANO)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Fallo en la comunicacion con el almacenamiento en la nube",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping(value = "/evidencias/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('CIUDADANO')")
+    public ResponseEntity<ApiResponse<UploadEvidenciaResponseDto>> subirEvidencia(
+            @Parameter(description = "Archivo binario de imagen a subir (JPEG, PNG o WebP)")
+            @RequestParam("archivo") MultipartFile archivo,
+            Authentication authentication) {
+        UploadEvidenciaResponseDto respuesta = alertaService.subirEvidencia(archivo, authentication.getName());
+        return new ResponseEntity<>(
+                ApiResponse.success(respuesta, "Evidencia fotografica subida y optimizada exitosamente"),
                 HttpStatus.CREATED
         );
     }

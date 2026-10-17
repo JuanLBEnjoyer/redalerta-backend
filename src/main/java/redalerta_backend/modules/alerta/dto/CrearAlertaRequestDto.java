@@ -32,7 +32,8 @@ public class CrearAlertaRequestDto {
     @Schema(description = "Ubicacion territorial del incidente")
     private UbicacionAlertaDto ubicacion;
 
-    @Schema(description = "Lista opcional de URLs de evidencias previamente cargadas")
+    @Size(max = 5, message = "No se pueden adjuntar mas de 5 evidencias por alerta")
+    @Schema(description = "Lista opcional de URLs de evidencias previamente cargadas (maximo 5 imagenes)")
     private List<String> evidenciasUrls;
 
     @Builder.Default

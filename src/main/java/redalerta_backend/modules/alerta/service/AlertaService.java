@@ -79,4 +79,14 @@ public interface AlertaService {
      * @return Alerta actualizada en su representacion DTO.
      */
     AlertaResponseDto modificarAlerta(Long id, ModificarAlertaRequestDto request, String emailUsuario);
+
+    /**
+     * Valida, comprime y sube una evidencia fotografica a AWS S3 para el ciudadano autenticado.
+     *
+     * @param archivo      Archivo binario de imagen multipart enviado por el cliente.
+     * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+     * @return DTO con la URL y metadatos de la evidencia almacenada en la nube.
+     */
+    redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto subirEvidencia(
+            org.springframework.web.multipart.MultipartFile archivo, String emailUsuario);
 }

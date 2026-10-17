@@ -9,10 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
+import org.springframework.web.multipart.MultipartFile;
+import redalerta_backend.common.storage.StorageService;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
@@ -34,9 +37,12 @@ import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 @RequiredArgsConstructor
 public class AlertaServiceImpl implements AlertaService {
 
+    private static final int MAX_EVIDENCIAS_PERMITIDAS = 5;
+
     private final AlertaRepository alertaRepository;
     private final UsuarioRepository usuarioRepository;
     private final AlertaMapper alertaMapper;
+    private final StorageService storageService;
 
     /**
      * {@inheritDoc}
@@ -45,6 +51,10 @@ public class AlertaServiceImpl implements AlertaService {
     @Transactional
     public AlertaResponseDto crearAlerta(CrearAlertaRequestDto request, String emailUsuario) {
         Usuario autor = buscarUsuarioPorEmail(emailUsuario);
+
+        if (request.getEvidenciasUrls() != null && request.getEvidenciasUrls().size() > MAX_EVIDENCIAS_PERMITIDAS) {
+            throw new BadRequestException("No se pueden adjuntar mas de " + MAX_EVIDENCIAS_PERMITIDAS + " evidencias por alerta");
+        }
 
         UbicacionAlerta ubicacion = alertaMapper.toUbicacionAlerta(request.getUbicacion());
         Boolean esAnonimo = Boolean.TRUE.equals(request.getEsAnonimo());
@@ -177,6 +187,10 @@ public class AlertaServiceImpl implements AlertaService {
             throw new BadRequestException("Solo se pueden modificar alertas en estado PENDIENTE_REVISION");
         }
 
+        if (request.getEvidenciasUrls() != null && request.getEvidenciasUrls().size() > MAX_EVIDENCIAS_PERMITIDAS) {
+            throw new BadRequestException("No se pueden adjuntar mas de " + MAX_EVIDENCIAS_PERMITIDAS + " evidencias por alerta");
+        }
+
         alerta.setDescripcion(request.getDescripcion().trim());
         alerta.setUbicacion(alertaMapper.toUbicacionAlerta(request.getUbicacion()));
 
@@ -198,6 +212,15 @@ public class AlertaServiceImpl implements AlertaService {
 
         Alerta alertaActualizada = alertaRepository.save(alerta);
         return alertaMapper.toResponseDto(alertaActualizada);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UploadEvidenciaResponseDto subirEvidencia(MultipartFile archivo, String emailUsuario) {
+        buscarUsuarioPorEmail(emailUsuario);
+        return storageService.subirEvidencia(archivo, "alertas/evidencias");
     }
 
     private Usuario buscarUsuarioPorEmail(String email) {
