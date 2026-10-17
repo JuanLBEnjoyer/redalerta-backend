@@ -37,43 +37,6 @@ El proyecto esta construido bajo una arquitectura modular orientada al dominio (
 
 ---
 
-## Estructura de Paquetes
-
-```text
-src/main/java/redalerta_backend/
-├── config/                          Configuracion global del framework
-│   ├── OpenApiConfig.java           Configuracion de OpenAPI 3 / Swagger
-│   ├── SecurityConfig.java          Cadena de filtros de seguridad HTTP y @EnableMethodSecurity
-│   └── security/                    Infraestructura de autenticacion JWT
-│       ├── JwtService.java          Firma, parsing y validacion de tokens
-│       ├── JwtAuthenticationFilter  Filtro interceptor OncePerRequestFilter
-│       └── CustomUserDetailsService Adaptador de UserDetailsService
-├── common/                          Componentes transversales reutilizables
-│   ├── dto/                         ApiResponse<T> y ErrorResponse
-│   └── exception/                   Jerarquia de excepciones y GlobalExceptionHandler
-└── modules/                         Modulos de negocio por contexto delimitado
-    ├── auth/                        Registro, inicio de sesion y emision de credenciales
-    │   ├── controller/              AuthController
-    │   ├── dto/                     LoginRequestDto, LoginResponseDto, RegistroRequestDto
-    │   └── service/                 AuthService e implementacion
-    ├── usuario/                     Gestion de usuarios, encuesta y caracterizacion
-    │   ├── controller/              UsuarioController
-    │   ├── dto/                     UbicacionRequestDto, UbicacionResponseDto, etc.
-    │   ├── entity/                  Usuario y CaracterizacionUsuario
-    │   ├── mapper/                  UsuarioMapper
-    │   ├── repository/              UsuarioRepository
-    │   └── valueobject/             Documento, Ubicacion, Genero, Rol, TipoDeDocumento
-    └── alerta/                      Modulo de alertas comunitarias y monitoreo
-        ├── controller/              AlertaController
-        ├── dto/                     CrearAlertaRequestDto, AlertaResponseDto, etc.
-        ├── entity/                  Alerta y EvidenciaAlerta
-        ├── mapper/                  AlertaMapper
-        ├── repository/              AlertaRepository
-        └── valueobject/             UbicacionAlerta, EstadoAlerta
-```
-
----
-
 ## Inicio Rapido
 
 ### Requisitos Previos
