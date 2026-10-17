@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
+import redalerta_backend.modules.admin.dto.EvidenciaSolicitudResponseDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.entity.SolicitudRegistro;
 import redalerta_backend.modules.admin.mapper.SolicitudRegistroMapper;
@@ -27,6 +28,7 @@ import redalerta_backend.modules.usuario.valueobject.Rol;
 import redalerta_backend.modules.usuario.valueobject.TipoDeDocumento;
 import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -223,5 +225,100 @@ class AdminSolicitudServiceTest {
 
         assertEquals("No tiene permisos administrativos para acceder a este recurso", exception.getMessage());
         verify(solicitudRegistroRepository, never()).findByEstado(any(), any());
+    }
+
+    @Test
+    @DisplayName("Debe consultar el detalle y evidencias de una solicitud por ID exitosamente")
+    void obtenerSolicitudPorIdExitoso() {
+        EvidenciaSolicitudResponseDto evidenciaDto = EvidenciaSolicitudResponseDto.builder()
+                .id(1L)
+                .url("https://s3.amazonaws.com/redalerta/soportes/certificado.pdf")
+                .nombreArchivo("certificado.pdf")
+                .fechaSubida(LocalDateTime.now())
+                .build();
+
+        SolicitudRegistroResponseDto detalleDto = SolicitudRegistroResponseDto.builder()
+                .id(10L)
+                .usuarioId(2L)
+                .nombre("Jaime Restrepo")
+                .email("jaime@jac.org")
+                .rol(Rol.ROLE_LIDER)
+                .estado(EstadoSolicitud.PENDIENTE)
+                .sectorComunidad("JAC Barrio Granada")
+                .totalEvidencias(1)
+                .evidencias(List.of(evidenciaDto))
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(10L)).thenReturn(Optional.of(solicitudLider));
+        when(solicitudRegistroMapper.toResponseDto(solicitudLider)).thenReturn(detalleDto);
+
+        SolicitudRegistroResponseDto resultado = adminSolicitudService.obtenerSolicitudPorId(10L, "admin@redalerta.org");
+
+        assertNotNull(resultado);
+        assertEquals(10L, resultado.getId());
+        assertEquals("Jaime Restrepo", resultado.getNombre());
+        assertEquals(Rol.ROLE_LIDER, resultado.getRol());
+        assertEquals(1, resultado.getTotalEvidencias());
+        assertEquals("https://s3.amazonaws.com/redalerta/soportes/certificado.pdf", resultado.getEvidencias().getFirst().getUrl());
+        verify(solicitudRegistroRepository).findById(10L);
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException si la solicitud por ID no existe")
+    void obtenerSolicitudPorIdNoEncontrada() {
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> adminSolicitudService.obtenerSolicitudPorId(99L, "admin@redalerta.org")
+        );
+
+        assertEquals("Solicitud de registro no encontrada con id: 99", exception.getMessage());
+        verify(solicitudRegistroRepository).findById(99L);
+        verify(solicitudRegistroMapper, never()).toResponseDto(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException al consultar por ID si el usuario no es admin")
+    void obtenerSolicitudPorIdUsuarioNoAdmin() {
+        Usuario noAdmin = Usuario.builder()
+                .id(5L)
+                .email("ciudadano@redalerta.org")
+                .rol(Rol.ROLE_CIUDADANO)
+                .activo(true)
+                .build();
+
+        when(usuarioRepository.findByEmail("ciudadano@redalerta.org")).thenReturn(Optional.of(noAdmin));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> adminSolicitudService.obtenerSolicitudPorId(10L, "ciudadano@redalerta.org")
+        );
+
+        assertEquals("No tiene permisos administrativos para acceder a este recurso", exception.getMessage());
+        verify(solicitudRegistroRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException al consultar por ID si el admin esta inactivo")
+    void obtenerSolicitudPorIdAdminInactivo() {
+        Usuario adminInactivo = Usuario.builder()
+                .id(1L)
+                .email("admin@redalerta.org")
+                .rol(Rol.ROLE_ADMIN)
+                .activo(false)
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(adminInactivo));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> adminSolicitudService.obtenerSolicitudPorId(10L, "admin@redalerta.org")
+        );
+
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(solicitudRegistroRepository, never()).findById(any());
     }
 }
