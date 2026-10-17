@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
+import redalerta_backend.modules.admin.dto.AprobarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.EvidenciaSolicitudResponseDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.entity.SolicitudRegistro;
@@ -316,6 +317,119 @@ class AdminSolicitudServiceTest {
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
                 () -> adminSolicitudService.obtenerSolicitudPorId(10L, "admin@redalerta.org")
+        );
+
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(solicitudRegistroRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Debe aprobar solicitud y activar cuenta de usuario exitosamente con observaciones")
+    void aprobarSolicitudExitosoConObservaciones() {
+        AprobarSolicitudRequestDto request = AprobarSolicitudRequestDto.builder()
+                .observaciones("Soportes validados ante Personeria.")
+                .build();
+
+        SolicitudRegistroResponseDto dtoAprobado = SolicitudRegistroResponseDto.builder()
+                .id(10L)
+                .usuarioId(2L)
+                .nombre("Jaime Restrepo")
+                .estado(EstadoSolicitud.APROBADA)
+                .observacionesAdmin("Soportes validados ante Personeria.")
+                .revisadoPorNombre("Administrador Principal")
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(10L)).thenReturn(Optional.of(solicitudLider));
+        when(usuarioRepository.save(usuarioLider)).thenReturn(usuarioLider);
+        when(solicitudRegistroRepository.save(solicitudLider)).thenReturn(solicitudLider);
+        when(solicitudRegistroMapper.toResponseDto(solicitudLider)).thenReturn(dtoAprobado);
+
+        SolicitudRegistroResponseDto resultado = adminSolicitudService.aprobarSolicitud(
+                10L, request, "admin@redalerta.org"
+        );
+
+        assertNotNull(resultado);
+        assertEquals(EstadoSolicitud.APROBADA, resultado.getEstado());
+        assertEquals("Soportes validados ante Personeria.", resultado.getObservacionesAdmin());
+        assertTrue(usuarioLider.getActivo(), "La cuenta del usuario debe haber sido activada");
+        assertEquals(EstadoSolicitud.APROBADA, solicitudLider.getEstado());
+        assertEquals("Soportes validados ante Personeria.", solicitudLider.getObservacionesAdmin());
+        assertEquals(usuarioAdmin, solicitudLider.getRevisadoPor());
+        assertNotNull(solicitudLider.getFechaRevision());
+
+        verify(usuarioRepository).save(usuarioLider);
+        verify(solicitudRegistroRepository).save(solicitudLider);
+    }
+
+    @Test
+    @DisplayName("Debe aprobar solicitud y activar cuenta sin observaciones opcionales")
+    void aprobarSolicitudExitosoSinObservaciones() {
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(10L)).thenReturn(Optional.of(solicitudLider));
+        when(usuarioRepository.save(usuarioLider)).thenReturn(usuarioLider);
+        when(solicitudRegistroRepository.save(solicitudLider)).thenReturn(solicitudLider);
+        when(solicitudRegistroMapper.toResponseDto(solicitudLider)).thenReturn(responseDto);
+
+        SolicitudRegistroResponseDto resultado = adminSolicitudService.aprobarSolicitud(
+                10L, null, "admin@redalerta.org"
+        );
+
+        assertNotNull(resultado);
+        assertTrue(usuarioLider.getActivo(), "La cuenta del usuario debe quedar activa");
+        assertEquals(EstadoSolicitud.APROBADA, solicitudLider.getEstado());
+        verify(usuarioRepository).save(usuarioLider);
+        verify(solicitudRegistroRepository).save(solicitudLider);
+    }
+
+    @Test
+    @DisplayName("Debe lanzar BadRequestException si la solicitud no esta en estado PENDIENTE")
+    void aprobarSolicitudEstadoNoPendiente() {
+        solicitudLider.setEstado(EstadoSolicitud.APROBADA);
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(10L)).thenReturn(Optional.of(solicitudLider));
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> adminSolicitudService.aprobarSolicitud(10L, null, "admin@redalerta.org")
+        );
+
+        assertTrue(exception.getMessage().contains("Solo se pueden aprobar solicitudes en estado PENDIENTE"));
+        verify(usuarioRepository, never()).save(any());
+        verify(solicitudRegistroRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException si la solicitud a aprobar no existe")
+    void aprobarSolicitudNoExiste() {
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> adminSolicitudService.aprobarSolicitud(99L, null, "admin@redalerta.org")
+        );
+
+        assertEquals("Solicitud de registro no encontrada con id: 99", exception.getMessage());
+        verify(usuarioRepository, never()).save(any());
+        verify(solicitudRegistroRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException al aprobar si el admin esta inactivo")
+    void aprobarSolicitudAdminInactivo() {
+        Usuario adminInactivo = Usuario.builder()
+                .id(1L)
+                .email("admin@redalerta.org")
+                .rol(Rol.ROLE_ADMIN)
+                .activo(false)
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(adminInactivo));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> adminSolicitudService.aprobarSolicitud(10L, null, "admin@redalerta.org")
         );
 
         assertEquals("El usuario se encuentra inactivo", exception.getMessage());
