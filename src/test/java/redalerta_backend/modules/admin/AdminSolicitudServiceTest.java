@@ -16,6 +16,7 @@ import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.admin.dto.AprobarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.EvidenciaSolicitudResponseDto;
+import redalerta_backend.modules.admin.dto.RechazarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.entity.SolicitudRegistro;
 import redalerta_backend.modules.admin.mapper.SolicitudRegistroMapper;
@@ -430,6 +431,111 @@ class AdminSolicitudServiceTest {
         UnauthorizedException exception = assertThrows(
                 UnauthorizedException.class,
                 () -> adminSolicitudService.aprobarSolicitud(10L, null, "admin@redalerta.org")
+        );
+
+        assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+        verify(solicitudRegistroRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Debe rechazar solicitud exitosamente registrando el motivo y manteniendo la cuenta inactiva")
+    void rechazarSolicitudExitoso() {
+        RechazarSolicitudRequestDto request = RechazarSolicitudRequestDto.builder()
+                .motivo("Documento de soporte no legible o vencido.")
+                .build();
+
+        SolicitudRegistroResponseDto dtoRechazado = SolicitudRegistroResponseDto.builder()
+                .id(10L)
+                .usuarioId(2L)
+                .nombre("Jaime Restrepo")
+                .estado(EstadoSolicitud.RECHAZADA)
+                .observacionesAdmin("Documento de soporte no legible o vencido.")
+                .revisadoPorNombre("Administrador Principal")
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(10L)).thenReturn(Optional.of(solicitudLider));
+        when(usuarioRepository.save(usuarioLider)).thenReturn(usuarioLider);
+        when(solicitudRegistroRepository.save(solicitudLider)).thenReturn(solicitudLider);
+        when(solicitudRegistroMapper.toResponseDto(solicitudLider)).thenReturn(dtoRechazado);
+
+        SolicitudRegistroResponseDto resultado = adminSolicitudService.rechazarSolicitud(
+                10L, request, "admin@redalerta.org"
+        );
+
+        assertNotNull(resultado);
+        assertEquals(EstadoSolicitud.RECHAZADA, resultado.getEstado());
+        assertEquals("Documento de soporte no legible o vencido.", resultado.getObservacionesAdmin());
+        assertFalse(usuarioLider.getActivo(), "La cuenta del usuario debe permanecer inactiva");
+        assertEquals(EstadoSolicitud.RECHAZADA, solicitudLider.getEstado());
+        assertEquals("Documento de soporte no legible o vencido.", solicitudLider.getObservacionesAdmin());
+        assertEquals(usuarioAdmin, solicitudLider.getRevisadoPor());
+        assertNotNull(solicitudLider.getFechaRevision());
+
+        verify(usuarioRepository).save(usuarioLider);
+        verify(solicitudRegistroRepository).save(solicitudLider);
+    }
+
+    @Test
+    @DisplayName("Debe lanzar BadRequestException si la solicitud a rechazar no esta en estado PENDIENTE")
+    void rechazarSolicitudEstadoNoPendiente() {
+        solicitudLider.setEstado(EstadoSolicitud.APROBADA);
+        RechazarSolicitudRequestDto request = RechazarSolicitudRequestDto.builder()
+                .motivo("Motivo de prueba")
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(10L)).thenReturn(Optional.of(solicitudLider));
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> adminSolicitudService.rechazarSolicitud(10L, request, "admin@redalerta.org")
+        );
+
+        assertTrue(exception.getMessage().contains("Solo se pueden rechazar solicitudes en estado PENDIENTE"));
+        verify(usuarioRepository, never()).save(any());
+        verify(solicitudRegistroRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar ResourceNotFoundException si la solicitud a rechazar no existe")
+    void rechazarSolicitudNoExiste() {
+        RechazarSolicitudRequestDto request = RechazarSolicitudRequestDto.builder()
+                .motivo("Motivo de prueba")
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(usuarioAdmin));
+        when(solicitudRegistroRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> adminSolicitudService.rechazarSolicitud(99L, request, "admin@redalerta.org")
+        );
+
+        assertEquals("Solicitud de registro no encontrada con id: 99", exception.getMessage());
+        verify(usuarioRepository, never()).save(any());
+        verify(solicitudRegistroRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar UnauthorizedException al rechazar si el admin esta inactivo")
+    void rechazarSolicitudAdminInactivo() {
+        Usuario adminInactivo = Usuario.builder()
+                .id(1L)
+                .email("admin@redalerta.org")
+                .rol(Rol.ROLE_ADMIN)
+                .activo(false)
+                .build();
+
+        RechazarSolicitudRequestDto request = RechazarSolicitudRequestDto.builder()
+                .motivo("Motivo de prueba")
+                .build();
+
+        when(usuarioRepository.findByEmail("admin@redalerta.org")).thenReturn(Optional.of(adminInactivo));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> adminSolicitudService.rechazarSolicitud(10L, request, "admin@redalerta.org")
         );
 
         assertEquals("El usuario se encuentra inactivo", exception.getMessage());
