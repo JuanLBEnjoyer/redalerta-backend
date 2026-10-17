@@ -146,6 +146,16 @@ Cuando un lider comunitario direcciona una alerta ocurrida en una ubicacion dete
 * **Eliminacion por el Autor:** De igual manera, la cancelacion o eliminacion definitiva de la alerta solo es admisible durante la Fase 1 (`PENDIENTE_REVISION`).
 * **Bloqueo Operativo y Auditoria:** Tan pronto como la alerta es direccionada por un lider (Fase 2 `DIRECCIONADA`), entra en atencion institucional (Fase 3 `EN_GESTION`) o concluye (Fase 4 `RESUELTA` o `RECHAZADA`), tanto la modificacion como la eliminacion quedan estrictamente bloqueadas para salvaguardar la trazabilidad, evitar desorientacion en los equipos de rescate o respuesta y garantizar la auditoria sobre los recursos movilizados.
 
+### 5.3 Politica de Privacidad y Reportes Anonimos
+* **Proteccion de la Identidad:** En situaciones de orden publico, amenazas o emergencias complejas, el ciudadano puede marcar su reporte como anonimo (`esAnonimo = true`).
+* **Visibilidad Comunitaria:** En el Feed publico y vistas compartidas, el nombre del autor se muestra como `"Anónimo"` y su identificador de usuario (`autorId`) se oculta para impedir rastreos o represalias.
+* **Trazabilidad Interna:** El sistema asocia internamente la alerta al usuario autenticado para fines de auditoria, prevencion de reportes maliciosos y para que el autor pueda gestionarla de forma privada desde su apartado *"Mis Alertas"*.
+
+### 5.4 Experiencia de Usuario: Feed Comunitario y Espacio 'Mis Alertas'
+* **Feed Comunitario General (`GET /alertas`):** Muestra alertas activas (`PENDIENTE_REVISION`, `DIRECCIONADA`, `EN_GESTION`) del entorno local del usuario. Si no se aplican filtros manuales, el sistema presenta automaticamente los reportes del municipio y departamento de residencia del usuario autenticado.
+* **Espacio Personal 'Mis Alertas' (`GET /alertas/mis-alertas`):** Bandeja privada donde el ciudadano consulta el estado historico de todas sus alertas propias (incluyendo resueltas o rechazadas), con potestad para editarlas o eliminarlas mientras sigan en `PENDIENTE_REVISION`.
+* **Optimizacion de Tarjetas de Previsualizacion (Feed y Mis Alertas):** En las vistas de listado, cada tarjeta entrega un maximo de 3 evidencias fotograficas acompanadas del indicador `totalEvidencias`. Si el reporte contiene mas de 3 fotografias, la interfaz visual muestra un indicador `+N` sobre la tercera imagen para evitar sobrecarga en la red movil y en el servidor, reservando la descarga de la galeria completa para la vista de detalle (`GET /alertas/{id}`).
+
 ---
 
 ## 6. Arquitectura de Almacenamiento de Evidencias

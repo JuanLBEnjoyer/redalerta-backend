@@ -41,6 +41,12 @@ public class AlertaResponseDto {
     @Schema(description = "Evidencias fotograficas adjuntas")
     private List<EvidenciaResponseDto> evidencias;
 
+    @Schema(description = "Indica si la alerta fue publicada de forma anonima", example = "false")
+    private Boolean esAnonimo;
+
+    @Schema(description = "Total de evidencias fotograficas adjuntas a la alerta", example = "4")
+    private Integer totalEvidencias;
+
     @Schema(description = "Fecha y hora de creacion de la alerta")
     private LocalDateTime fechaCreacion;
 }

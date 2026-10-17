@@ -22,14 +22,53 @@ public class AlertaMapper {
             return null;
         }
 
+        int totalEvidencias = alerta.getEvidencias() != null ? alerta.getEvidencias().size() : 0;
+        boolean esAnonimo = Boolean.TRUE.equals(alerta.getEsAnonimo());
+        Long autorId = esAnonimo ? null : (alerta.getAutor() != null ? alerta.getAutor().getId() : null);
+        String autorNombre = esAnonimo ? "Anónimo" : (alerta.getAutor() != null ? alerta.getAutor().getNombre() : null);
+
         return AlertaResponseDto.builder()
                 .id(alerta.getId())
                 .descripcion(alerta.getDescripcion())
                 .ubicacion(toUbicacionAlertaDto(alerta.getUbicacion()))
-                .autorId(alerta.getAutor() != null ? alerta.getAutor().getId() : null)
-                .autorNombre(alerta.getAutor() != null ? alerta.getAutor().getNombre() : null)
+                .autorId(autorId)
+                .autorNombre(autorNombre)
                 .estado(alerta.getEstado())
+                .esAnonimo(esAnonimo)
+                .totalEvidencias(totalEvidencias)
                 .evidencias(toEvidenciaResponseDtoList(alerta.getEvidencias()))
+                .fechaCreacion(alerta.getFechaCreacion())
+                .build();
+    }
+
+    public AlertaResponseDto toResumenResponseDto(Alerta alerta, int maxEvidencias) {
+        if (alerta == null) {
+            return null;
+        }
+
+        int totalEvidencias = alerta.getEvidencias() != null ? alerta.getEvidencias().size() : 0;
+        boolean esAnonimo = Boolean.TRUE.equals(alerta.getEsAnonimo());
+        Long autorId = esAnonimo ? null : (alerta.getAutor() != null ? alerta.getAutor().getId() : null);
+        String autorNombre = esAnonimo ? "Anónimo" : (alerta.getAutor() != null ? alerta.getAutor().getNombre() : null);
+
+        List<EvidenciaResponseDto> evidenciasResumen = Collections.emptyList();
+        if (alerta.getEvidencias() != null && !alerta.getEvidencias().isEmpty()) {
+            evidenciasResumen = alerta.getEvidencias().stream()
+                    .limit(maxEvidencias > 0 ? maxEvidencias : totalEvidencias)
+                    .map(this::toEvidenciaResponseDto)
+                    .toList();
+        }
+
+        return AlertaResponseDto.builder()
+                .id(alerta.getId())
+                .descripcion(alerta.getDescripcion())
+                .ubicacion(toUbicacionAlertaDto(alerta.getUbicacion()))
+                .autorId(autorId)
+                .autorNombre(autorNombre)
+                .estado(alerta.getEstado())
+                .esAnonimo(esAnonimo)
+                .totalEvidencias(totalEvidencias)
+                .evidencias(evidenciasResumen)
                 .fechaCreacion(alerta.getFechaCreacion())
                 .build();
     }
