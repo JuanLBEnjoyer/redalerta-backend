@@ -43,6 +43,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import redalerta_backend.common.storage.StorageService;
+import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.mock.web.MockMultipartFile;
+
 @ExtendWith(MockitoExtension.class)
 class AlertaServiceTest {
 
@@ -54,6 +59,9 @@ class AlertaServiceTest {
 
         @Mock
         private AlertaMapper alertaMapper;
+
+        @Mock
+        private StorageService storageService;
 
         @InjectMocks
         private AlertaServiceImpl alertaService;
@@ -703,5 +711,105 @@ class AlertaServiceTest {
                 assertEquals("Medellin", filtroVacio.getMunicipio());
 
                 verify(alertaRepository, times(2)).findAll(ArgumentMatchers.<Specification<Alerta>>any(), eq(pageable));
+        }
+
+        @Test
+        @DisplayName("Debe lanzar BadRequestException si se intenta crear una alerta con mas de 5 evidencias")
+        void crearAlertaExcedeLimiteEvidenciasLanzaBadRequestException() {
+                List<String> seisEvidencias = List.of(
+                                "https://s3.amazonaws.com/1.jpg",
+                                "https://s3.amazonaws.com/2.jpg",
+                                "https://s3.amazonaws.com/3.jpg",
+                                "https://s3.amazonaws.com/4.jpg",
+                                "https://s3.amazonaws.com/5.jpg",
+                                "https://s3.amazonaws.com/6.jpg");
+                requestDto.setEvidenciasUrls(seisEvidencias);
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+
+                BadRequestException exception = assertThrows(
+                                BadRequestException.class,
+                                () -> alertaService.crearAlerta(requestDto, "carlos@example.com"));
+
+                assertEquals("No se pueden adjuntar mas de 5 evidencias por alerta", exception.getMessage());
+                verify(alertaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Debe lanzar BadRequestException si se intenta modificar una alerta con mas de 5 evidencias")
+        void modificarAlertaExcedeLimiteEvidenciasLanzaBadRequestException() {
+                Alerta alertaOriginal = Alerta.builder()
+                                .id(15L)
+                                .descripcion("Descripcion")
+                                .ubicacion(ubicacionVO)
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .build();
+
+                List<String> seisEvidencias = List.of(
+                                "https://s3.amazonaws.com/1.jpg",
+                                "https://s3.amazonaws.com/2.jpg",
+                                "https://s3.amazonaws.com/3.jpg",
+                                "https://s3.amazonaws.com/4.jpg",
+                                "https://s3.amazonaws.com/5.jpg",
+                                "https://s3.amazonaws.com/6.jpg");
+
+                ModificarAlertaRequestDto requestExcedido = ModificarAlertaRequestDto.builder()
+                                .descripcion("Modificacion con exceso de fotos")
+                                .ubicacion(ubicacionDto)
+                                .evidenciasUrls(seisEvidencias)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(15L)).thenReturn(Optional.of(alertaOriginal));
+
+                BadRequestException exception = assertThrows(
+                                BadRequestException.class,
+                                () -> alertaService.modificarAlerta(15L, requestExcedido, "carlos@example.com"));
+
+                assertEquals("No se pueden adjuntar mas de 5 evidencias por alerta", exception.getMessage());
+                verify(alertaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Debe subir evidencia exitosamente delegando al StorageService para usuario activo")
+        void subirEvidenciaExitoso() {
+                MockMultipartFile archivoMock = new MockMultipartFile(
+                                "archivo", "foto.jpg", "image/jpeg", "dummy-image-content".getBytes());
+
+                UploadEvidenciaResponseDto respuestaEsperada = UploadEvidenciaResponseDto.builder()
+                                .url("https://bucket.s3.amazonaws.com/alertas/foto.jpg")
+                                .key("alertas/foto.jpg")
+                                .nombreOriginal("foto.jpg")
+                                .pesoOriginalBytes(1000L)
+                                .pesoComprimidoBytes(300L)
+                                .tipoMime("image/jpeg")
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(storageService.subirEvidencia(archivoMock, "alertas/evidencias")).thenReturn(respuestaEsperada);
+
+                UploadEvidenciaResponseDto resultado = alertaService.subirEvidencia(archivoMock, "carlos@example.com");
+
+                assertNotNull(resultado);
+                assertEquals("https://bucket.s3.amazonaws.com/alertas/foto.jpg", resultado.getUrl());
+                verify(storageService).subirEvidencia(archivoMock, "alertas/evidencias");
+        }
+
+        @Test
+        @DisplayName("Debe lanzar UnauthorizedException si un usuario inactivo intenta subir evidencia")
+        void subirEvidenciaUsuarioInactivoLanzaUnauthorizedException() {
+                MockMultipartFile archivoMock = new MockMultipartFile(
+                                "archivo", "foto.jpg", "image/jpeg", "dummy-image-content".getBytes());
+                usuarioCiudadano.setActivo(false);
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+
+                UnauthorizedException exception = assertThrows(
+                                UnauthorizedException.class,
+                                () -> alertaService.subirEvidencia(archivoMock, "carlos@example.com"));
+
+                assertEquals("El usuario se encuentra inactivo", exception.getMessage());
+                verify(storageService, never()).subirEvidencia(any(), any());
         }
 }
