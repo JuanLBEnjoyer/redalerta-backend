@@ -9,6 +9,7 @@ import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
 import redalerta_backend.modules.admin.dto.AprobarSolicitudRequestDto;
+import redalerta_backend.modules.admin.dto.RechazarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.entity.SolicitudRegistro;
 import redalerta_backend.modules.admin.mapper.SolicitudRegistroMapper;
@@ -100,6 +101,36 @@ public class AdminSolicitudServiceImpl implements AdminSolicitudService {
         if (request != null && request.getObservaciones() != null && !request.getObservaciones().isBlank()) {
             solicitud.setObservacionesAdmin(request.getObservaciones().trim());
         }
+        solicitud.setFechaRevision(LocalDateTime.now());
+        solicitud.setRevisadoPor(admin);
+
+        SolicitudRegistro guardada = solicitudRegistroRepository.save(solicitud);
+        return solicitudRegistroMapper.toResponseDto(guardada);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public SolicitudRegistroResponseDto rechazarSolicitud(Long id, RechazarSolicitudRequestDto request, String emailAdmin) {
+        Usuario admin = validarAdministrador(emailAdmin);
+
+        SolicitudRegistro solicitud = solicitudRegistroRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud de registro no encontrada con id: " + id));
+
+        if (solicitud.getEstado() != EstadoSolicitud.PENDIENTE) {
+            throw new BadRequestException("Solo se pueden rechazar solicitudes en estado PENDIENTE. Estado actual: " + solicitud.getEstado());
+        }
+
+        Usuario solicitante = solicitud.getUsuario();
+        if (solicitante != null) {
+            solicitante.setActivo(false);
+            usuarioRepository.save(solicitante);
+        }
+
+        solicitud.setEstado(EstadoSolicitud.RECHAZADA);
+        solicitud.setObservacionesAdmin(request.getMotivo().trim());
         solicitud.setFechaRevision(LocalDateTime.now());
         solicitud.setRevisadoPor(admin);
 

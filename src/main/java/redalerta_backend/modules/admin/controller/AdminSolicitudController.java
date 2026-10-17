@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.admin.dto.AprobarSolicitudRequestDto;
+import redalerta_backend.modules.admin.dto.RechazarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.service.AdminSolicitudService;
 import redalerta_backend.modules.admin.valueobject.EstadoSolicitud;
@@ -143,5 +144,41 @@ public class AdminSolicitudController {
                 authentication.getName()
         );
         return ResponseEntity.ok(ApiResponse.success(solicitud, "Solicitud de registro aprobada y cuenta activada exitosamente"));
+    }
+
+    /**
+     * Rechaza una postulacion de registro en estado PENDIENTE especificando el motivo administrativo.
+     *
+     * @param id Identificador unico de la solicitud de registro.
+     * @param request Payload con el motivo obligatorio del rechazo.
+     * @param authentication Contexto de seguridad con las credenciales del administrador autenticado.
+     * @return Solicitud de registro con estado RECHAZADA.
+     */
+    @Operation(
+            summary = "Rechazar solicitud de registro",
+            description = "Rechaza una solicitud de registro en estado PENDIENTE, registrando el motivo de rechazo obligatorio y manteniendo inactiva la cuenta de usuario."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Solicitud de registro rechazada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "La solicitud no se encuentra en estado PENDIENTE o motivo invalido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o cuenta inactiva",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol ROLE_ADMIN)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Solicitud de registro no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{id}/rechazar")
+    public ResponseEntity<ApiResponse<SolicitudRegistroResponseDto>> rechazarSolicitud(
+            @PathVariable Long id,
+            @Valid @RequestBody RechazarSolicitudRequestDto request,
+            Authentication authentication) {
+        SolicitudRegistroResponseDto solicitud = adminSolicitudService.rechazarSolicitud(
+                id,
+                request,
+                authentication.getName()
+        );
+        return ResponseEntity.ok(ApiResponse.success(solicitud, "Solicitud de registro rechazada exitosamente"));
     }
 }

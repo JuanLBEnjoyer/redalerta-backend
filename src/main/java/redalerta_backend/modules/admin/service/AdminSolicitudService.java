@@ -3,6 +3,7 @@ package redalerta_backend.modules.admin.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import redalerta_backend.modules.admin.dto.AprobarSolicitudRequestDto;
+import redalerta_backend.modules.admin.dto.RechazarSolicitudRequestDto;
 import redalerta_backend.modules.admin.dto.SolicitudRegistroResponseDto;
 import redalerta_backend.modules.admin.valueobject.EstadoSolicitud;
 import redalerta_backend.modules.usuario.valueobject.Rol;
@@ -43,4 +44,15 @@ public interface AdminSolicitudService {
      * @return DTO con la solicitud actualizada en estado APROBADA y la cuenta de usuario activada.
      */
     SolicitudRegistroResponseDto aprobarSolicitud(Long id, AprobarSolicitudRequestDto request, String emailAdmin);
+
+    /**
+     * Rechaza una postulacion de registro en estado PENDIENTE, registrando el motivo obligatorio
+     * del rechazo y la auditoria del administrador evaluador. La cuenta del usuario permanece inactiva.
+     *
+     * @param id Identificador unico de la solicitud.
+     * @param request DTO con el motivo o justificacion del rechazo.
+     * @param emailAdmin Correo del administrador autenticado obtenido del token JWT.
+     * @return DTO con la solicitud actualizada en estado RECHAZADA.
+     */
+    SolicitudRegistroResponseDto rechazarSolicitud(Long id, RechazarSolicitudRequestDto request, String emailAdmin);
 }
