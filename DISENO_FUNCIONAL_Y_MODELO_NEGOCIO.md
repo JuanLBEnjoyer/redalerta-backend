@@ -170,6 +170,11 @@ Las alertas permiten el anexo voluntario de fotografias (ej. registro visual de 
   - Asegura tiempos de respuesta ultrarrapidos en dispositivos moviles.
   - Permite servir imagenes directamente a traves de redes de distribucion sin consumir recursos de procesamiento de la API central.
 
+### Politicas de Optimizacion y Limites de Evidencias
+- **Limite Maximo de Evidencias:** Cada alerta permite adjuntar un maximo estricto de **5 imagenes** fotográficas (`@Size(max = 5)`). Esto garantiza suficiente soporte probatorio (panoramica, primer plano, detalle del dano) sin sobrecargar el reporte ni agotar el almacenamiento.
+- **Compresion y Redimensionamiento Automatico en Backend:** Para garantizar accesibilidad y empatia con comunidades en zonas vulnerables o rurales, el sistema no exige que el ciudadano comprima sus fotos. Si un usuario sube una imagen pesada de camara moderna (ej. 8 a 15 MB), el backend la redimensiona automaticamente en memoria a maximo 1920x1080 pixeles y aplica un factor de calidad JPEG del 80%. Esto reduce el peso de la imagen a ~350 KB antes de persistirla en AWS S3.
+- **Endpoint Dedicado de Carga (`POST /alertas/evidencias/upload`):** Permite subir archivos `multipart/form-data` con validacion estricta de tipo MIME (`image/jpeg`, `image/png`, `image/webp`), retornando de forma desacoplada la URL y metadatos de la imagen lista para ser anexada al crear o modificar el reporte.
+
 ---
 
 ## 7. Documentacion Dinamica de Endpoints y Contratos (Swagger UI & OpenAPI)
