@@ -67,7 +67,8 @@ El sistema define cuatro roles diferenciados con responsabilidades y alcances cl
 
 ### 2.4 Administrador (`ROLE_ADMIN`)
 - **Naturaleza:** Personal de control y gobierno de la plataforma.
-- **Responsabilidad:** Auditar solicitudes de registro de lideres y organizaciones, habilitar o suspender cuentas, supervisar la salud del sistema y parametrizar catalogos.
+- **Responsabilidad (Iteracion Actual):** Auditar y verificar las solicitudes de registro de lideres y organizaciones (proceso de Vetting) para autorizar su ingreso (`activo = true`).
+- **Responsabilidades Diferidas (Fase II):** Parametrizacion dinamica de catalogos maestros, monitoreo de salud del sistema, dashboard de analitica y modulo integral de auditoria.
 
 ---
 
@@ -161,21 +162,38 @@ Las alertas permiten el anexo voluntario de fotografias (ej. registro visual de 
 
 ---
 
-## 7. Matriz de Endpoints y Contratos Funcionales
+## 7. Documentacion Dinamica de Endpoints y Contratos (Swagger UI & OpenAPI)
 
-### Modulo de Autenticacion y Perfil
-- `POST /api/v1/auth/registro`: Registro de ciudadanos junto con encuesta de vulnerabilidad inicial.
-- `POST /api/v1/auth/login`: Autenticacion con credenciales y obtencion de token JWT portador.
-- `GET /api/v1/usuarios/perfil`: Consulta de los datos personales, ubicacion y encuesta sociodemografica del usuario autenticado.
-- `PUT /api/v1/usuarios/perfil`: Actualizacion de informacion de contacto y contrasena.
+Para evitar la desincronizacion continua entre la evolucion del codigo fuente y la documentacion tecnica, RedAlerta no mantiene catalogos manuales o estaticos de endpoints en archivos Markdown. En su lugar, el sistema expone su especificacion viva y actualizada automaticamente mediante **SpringDoc OpenAPI 3**.
 
-### Modulo de Alertas (Ciudadano y Equipo de Respuesta)
-- `POST /api/v1/alertas`: Publicacion de una nueva alerta con descripcion, ubicacion y evidencias opcionales (Estado inicial: `PENDIENTE_REVISION`).
-- `GET /api/v1/alertas`: Consulta paginada del listado general de alertas con filtros dinamicos opcionales (departamento, municipio, estado puntual y rango de fechas `fechaInicio`/`fechaFin`). Por defecto retorna alertas activas (`PENDIENTE_REVISION`, `DIRECCIONADA`, `EN_GESTION`).
-- `GET /api/v1/alertas/mis-alertas`: Consulta paginada del historial de alertas generadas por el propio ciudadano.
-- `GET /api/v1/alertas/{id}`: Detalle exhaustivo de una alerta comunitaria especifica (descripcion, ubicacion completa, estado, evidencias y autor), accesible para ciudadanos y miembros del equipo de respuesta.
-- `PUT /api/v1/alertas/{id}`: Modificacion de una alerta propia en estado PENDIENTE_REVISION.
-- `DELETE /api/v1/alertas/{id}`: Eliminacion de una alerta propia en estado PENDIENTE_REVISION.
+### Enlaces de Acceso
+
+* **Consola Interactiva (Swagger UI):** [http://localhost:8080/api/v1/swagger-ui.html](http://localhost:8080/api/v1/swagger-ui.html)
+* **Especificacion en Formato JSON (OpenAPI Spec):** [http://localhost:8080/api/v1/v3/api-docs](http://localhost:8080/api/v1/v3/api-docs)
+
+### Como Explorar y Probar los Contratos desde Swagger UI
+
+A traves de Swagger UI, los desarrolladores (frontend, movil, QA) pueden inspeccionar todos los endpoints agrupados por modulos funcionales (`Auth`, `Usuarios`, `Alertas`), consultar los esquemas DTO con sus validaciones y reglas de tipado, y ejecutar peticiones directamente contra el entorno local:
+
+1. **Iniciar el servidor backend:**
+   ```bash
+   sh ./mvnw spring-boot:run
+   ```
+2. **Obtener un Token de Autenticacion:**
+   - Despliegue el modulo **Auth** en la interfaz de Swagger UI.
+   - Utilice el endpoint `POST /api/v1/auth/login` (o registre un nuevo usuario en `POST /api/v1/auth/registro`).
+   - Haga clic en **Try it out**, ingrese las credenciales y presione **Execute**.
+   - Copie el valor del token JWT retornado en el campo `data.token`.
+3. **Autorizar la Sesion en Swagger UI:**
+   - En la esquina superior derecha, haga clic en el boton **Authorize** (icono del candado).
+   - En el campo **Value** del esquema `BearerAuth`, pegue el token copiado.
+   - Haga clic en **Authorize** y luego en **Close**.
+4. **Probar Endpoints Protegidos en Tiempo Real:**
+   - Cualquier solicitud ejecutada posteriormente desde la consola incluira automaticamente el encabezado HTTP:
+     ```http
+     Authorization: Bearer <token_jwt>
+     ```
+   - Podra consultar perfiles, publicar alertas, filtrarlas, modificarlas o eliminarlas, conociendo de inmediato los codigos HTTP de respuesta (200, 201, 400, 401, 403, 404) y la estructura exacta de los payloads de respuesta.
 
 ---
 
