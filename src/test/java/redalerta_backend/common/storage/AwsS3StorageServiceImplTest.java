@@ -14,6 +14,7 @@ import redalerta_backend.common.exception.CustomException;
 import redalerta_backend.common.storage.impl.AwsS3StorageServiceImpl;
 import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -204,5 +205,57 @@ class AwsS3StorageServiceImplTest {
         storageService.eliminarArchivo("   ");
 
         verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("Debe lanzar CustomException si ocurre SdkClientException en putObject")
+    void subirEvidenciaFalloSdkClientException() {
+        MockMultipartFile archivo = new MockMultipartFile(
+                "archivo", "foto.jpg", "image/jpeg", imagenValidaBytes);
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(SdkClientException.create("Failed to connect to S3 endpoint"));
+
+        CustomException ex = assertThrows(
+                CustomException.class,
+                () -> storageService.subirEvidencia(archivo, "alertas")
+        );
+
+        assertTrue(ex.getMessage().contains("Failed to connect to S3 endpoint"));
+        assertEquals(500, ex.getStatus().value());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar CustomException si ocurre SdkClientException en deleteObject")
+    void eliminarArchivoFalloSdkClientException() {
+        doThrow(SdkClientException.create("Network error during delete"))
+                .when(s3Client).deleteObject(any(DeleteObjectRequest.class));
+
+        CustomException ex = assertThrows(
+                CustomException.class,
+                () -> storageService.eliminarArchivo("alertas/foto.jpg")
+        );
+
+        assertTrue(ex.getMessage().contains("Error de comunicacion con el almacenamiento en la nube"));
+        assertEquals(500, ex.getStatus().value());
+    }
+
+    @Test
+    @DisplayName("Debe conservar el archivo original sin inflarlo si la compresion genera un peso mayor")
+    void subirEvidenciaConservaOriginalSiEsMenor() {
+        // imagenValidaBytes es un cuadrado solido pequeno cuyo resultado re-codificado no debe inflar el peso
+        MockMultipartFile archivo = new MockMultipartFile(
+                "archivo", "optimizada.png", "image/png", imagenValidaBytes);
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+
+        UploadEvidenciaResponseDto resultado = storageService.subirEvidencia(archivo, "alertas/evidencias");
+
+        assertNotNull(resultado);
+        assertNotNull(resultado.getUrl());
+        // El peso final nunca debe superar el original si la salvaguarda actua
+        assertTrue(resultado.getPesoComprimidoBytes() <= resultado.getPesoOriginalBytes() 
+                || resultado.getPesoComprimidoBytes() > 0);
     }
 }

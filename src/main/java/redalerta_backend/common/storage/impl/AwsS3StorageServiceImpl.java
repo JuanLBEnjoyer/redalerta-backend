@@ -11,6 +11,7 @@ import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.CustomException;
 import redalerta_backend.common.storage.StorageService;
 import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -58,26 +59,53 @@ public class AwsS3StorageServiceImpl implements StorageService {
     public UploadEvidenciaResponseDto subirEvidencia(MultipartFile archivo, String carpeta) {
         validarArchivo(archivo);
 
+        byte[] bytesOriginales;
+        try {
+            bytesOriginales = archivo.getBytes();
+        } catch (IOException e) {
+            log.error("Error al leer los bytes del archivo original: {}", archivo.getOriginalFilename(), e);
+            throw new BadRequestException("No se pudo leer el contenido del archivo de imagen");
+        }
+
         byte[] bytesComprimidos = comprimirImagen(archivo);
 
-        String nombreLimpio = archivo.getOriginalFilename() != null ? archivo.getOriginalFilename() : "evidencia.jpg";
+        byte[] bytesFinales;
+        String tipoMimeFinal;
+        String extensionFinal;
+
+        // Salvaguarda: solo adoptamos la version comprimida si efectivamente reduce el peso frente a la original.
+        if (bytesComprimidos != null && bytesComprimidos.length < bytesOriginales.length) {
+            bytesFinales = bytesComprimidos;
+            tipoMimeFinal = "image/jpeg";
+            extensionFinal = ".jpg";
+        } else {
+            bytesFinales = bytesOriginales;
+            tipoMimeFinal = archivo.getContentType() != null ? archivo.getContentType().toLowerCase() : "image/jpeg";
+            extensionFinal = determinarExtension(tipoMimeFinal);
+        }
+
+        String nombreLimpio = archivo.getOriginalFilename() != null ? archivo.getOriginalFilename() : ("evidencia" + extensionFinal);
         String prefijoCarpeta = (carpeta != null && !carpeta.isBlank()) ? carpeta.trim().replaceAll("^/+|/+$", "") + "/" : "";
-        String claveObjeto = prefijoCarpeta + UUID.randomUUID() + ".jpg";
+        String claveObjeto = prefijoCarpeta + UUID.randomUUID() + extensionFinal;
 
         try {
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(claveObjeto)
-                    .contentType("image/jpeg")
-                    .contentLength((long) bytesComprimidos.length)
+                    .contentType(tipoMimeFinal)
+                    .contentLength((long) bytesFinales.length)
                     .build();
 
-            s3Client.putObject(putRequest, RequestBody.fromBytes(bytesComprimidos));
-            log.info("Evidencia subida a S3 con exito: bucket={}, key={}, pesoOriginal={} bytes, pesoComprimido={} bytes",
-                    bucketName, claveObjeto, archivo.getSize(), bytesComprimidos.length);
+            s3Client.putObject(putRequest, RequestBody.fromBytes(bytesFinales));
+            log.info("Evidencia subida a S3 con exito: bucket={}, key={}, pesoOriginal={} bytes, pesoFinal={} bytes, tipoMime={}",
+                    bucketName, claveObjeto, archivo.getSize(), bytesFinales.length, tipoMimeFinal);
         } catch (S3Exception e) {
-            log.error("Fallo al subir objeto a AWS S3: {}", e.awsErrorDetails().errorMessage(), e);
+            log.error("Fallo al subir objeto a AWS S3 (S3Exception): {}", e.awsErrorDetails().errorMessage(), e);
             throw new CustomException("Error en el almacenamiento de evidencias en la nube: " + e.awsErrorDetails().errorMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (SdkException e) {
+            log.error("Fallo al comunicarse con AWS S3 (SdkException): {}", e.getMessage(), e);
+            throw new CustomException("Error de comunicacion con el almacenamiento en la nube: " + e.getMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
@@ -88,8 +116,8 @@ public class AwsS3StorageServiceImpl implements StorageService {
                 .key(claveObjeto)
                 .nombreOriginal(nombreLimpio)
                 .pesoOriginalBytes(archivo.getSize())
-                .pesoComprimidoBytes((long) bytesComprimidos.length)
-                .tipoMime("image/jpeg")
+                .pesoComprimidoBytes((long) bytesFinales.length)
+                .tipoMime(tipoMimeFinal)
                 .build();
     }
 
@@ -133,8 +161,13 @@ public class AwsS3StorageServiceImpl implements StorageService {
             s3Client.deleteObject(deleteRequest);
             log.info("Objeto eliminado de S3: bucket={}, key={}", bucketName, claveObjeto);
         } catch (S3Exception e) {
-            log.error("Error al eliminar objeto de S3: {}", claveObjeto, e);
-            throw new CustomException("Error al eliminar archivo del almacenamiento en la nube", HttpStatus.INTERNAL_SERVER_ERROR);
+            log.error("Error al eliminar objeto de S3 (S3Exception): {}", claveObjeto, e);
+            throw new CustomException("Error al eliminar archivo del almacenamiento en la nube: " + e.awsErrorDetails().errorMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (SdkException e) {
+            log.error("Error al comunicarse con AWS S3 para eliminar: {}", claveObjeto, e);
+            throw new CustomException("Error de comunicacion con el almacenamiento en la nube: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -162,5 +195,16 @@ public class AwsS3StorageServiceImpl implements StorageService {
             log.error("Error al procesar y comprimir la imagen: {}", archivo.getOriginalFilename(), e);
             throw new BadRequestException("El archivo suministrado no es una imagen valida o se encuentra corrupto");
         }
+    }
+
+    private String determinarExtension(String tipoMime) {
+        if (tipoMime == null) {
+            return ".jpg";
+        }
+        return switch (tipoMime.toLowerCase()) {
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            default -> ".jpg";
+        };
     }
 }
