@@ -67,6 +67,8 @@ public class AlertaServiceImpl implements AlertaService {
                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                 .build();
 
+        alerta.registrarPasoHistorial("Alerta reportada por ciudadano", EstadoAlerta.PENDIENTE_REVISION, autor);
+
         if (request.getEvidenciasUrls() != null && !request.getEvidenciasUrls().isEmpty()) {
             for (String url : request.getEvidenciasUrls()) {
                 if (url != null && !url.isBlank()) {

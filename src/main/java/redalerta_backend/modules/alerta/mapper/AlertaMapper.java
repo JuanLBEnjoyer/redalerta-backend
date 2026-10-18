@@ -3,9 +3,11 @@ package redalerta_backend.modules.alerta.mapper;
 import org.springframework.stereotype.Component;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.EvidenciaResponseDto;
+import redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto;
 import redalerta_backend.modules.alerta.dto.UbicacionAlertaDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
+import redalerta_backend.modules.alerta.valueobject.RegistroHistorial;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 
 import java.util.Collections;
@@ -34,9 +36,12 @@ public class AlertaMapper {
                 .autorId(autorId)
                 .autorNombre(autorNombre)
                 .estado(alerta.getEstado())
+                .categoria(alerta.getCategoria())
+                .prioridad(alerta.getPrioridad())
                 .esAnonimo(esAnonimo)
                 .totalEvidencias(totalEvidencias)
                 .evidencias(toEvidenciaResponseDtoList(alerta.getEvidencias()))
+                .historial(toHistorialResponseDtoList(alerta.getHistorial()))
                 .fechaCreacion(alerta.getFechaCreacion())
                 .build();
     }
@@ -66,10 +71,38 @@ public class AlertaMapper {
                 .autorId(autorId)
                 .autorNombre(autorNombre)
                 .estado(alerta.getEstado())
+                .categoria(alerta.getCategoria())
+                .prioridad(alerta.getPrioridad())
                 .esAnonimo(esAnonimo)
                 .totalEvidencias(totalEvidencias)
                 .evidencias(evidenciasResumen)
+                .historial(toHistorialResponseDtoList(alerta.getHistorial()))
                 .fechaCreacion(alerta.getFechaCreacion())
+                .build();
+    }
+
+    public List<RegistroHistorialResponseDto> toHistorialResponseDtoList(List<RegistroHistorial> historial) {
+        if (historial == null || historial.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return historial.stream()
+                .map(this::toHistorialResponseDto)
+                .toList();
+    }
+
+    public RegistroHistorialResponseDto toHistorialResponseDto(RegistroHistorial registro) {
+        if (registro == null) {
+            return null;
+        }
+
+        return RegistroHistorialResponseDto.builder()
+                .motivoOAccion(registro.motivoOAccion())
+                .fechaAccion(registro.fechaAccion())
+                .estadoResultante(registro.estadoResultante())
+                .responsableId(registro.responsableId())
+                .responsableNombre(registro.responsableNombre())
+                .responsableRol(registro.responsableRol())
                 .build();
     }
 

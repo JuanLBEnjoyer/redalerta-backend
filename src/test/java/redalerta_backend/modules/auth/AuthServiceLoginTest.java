@@ -16,7 +16,6 @@ import redalerta_backend.modules.auth.dto.LoginRequestDto;
 import redalerta_backend.modules.auth.dto.LoginResponseDto;
 import redalerta_backend.modules.auth.dto.UsuarioSesionDto;
 import redalerta_backend.modules.auth.service.impl.AuthServiceImpl;
-import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
@@ -136,8 +135,8 @@ class AuthServiceLoginTest {
     @DisplayName("Debe cerrar la sesión del usuario limpiando el SecurityContext")
     void logoutExitoso() {
         SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(usuarioMock.getEmail(), null, java.util.Collections.emptyList())
-        );
+                new UsernamePasswordAuthenticationToken(usuarioMock.getEmail(), null,
+                        java.util.Collections.emptyList()));
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
 
         authService.logout();

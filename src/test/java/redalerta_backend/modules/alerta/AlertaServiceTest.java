@@ -45,7 +45,6 @@ import static org.mockito.Mockito.*;
 
 import redalerta_backend.common.storage.StorageService;
 import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
@@ -572,7 +571,8 @@ class AlertaServiceTest {
                                 () -> alertaService.listarAlertas(filtroInvalido, "carlos@example.com", pageable));
 
                 assertEquals("La fecha de inicio no puede ser posterior a la fecha de fin", exception.getMessage());
-                verify(alertaRepository, never()).findAll(ArgumentMatchers.<Specification<Alerta>>any(), any(Pageable.class));
+                verify(alertaRepository, never()).findAll(ArgumentMatchers.<Specification<Alerta>>any(),
+                                any(Pageable.class));
         }
 
         @Test
@@ -586,7 +586,8 @@ class AlertaServiceTest {
                                 () -> alertaService.listarAlertas(null, "noexiste@example.com", pageable));
 
                 assertTrue(exception.getMessage().contains("noexiste@example.com"));
-                verify(alertaRepository, never()).findAll(ArgumentMatchers.<Specification<Alerta>>any(), any(Pageable.class));
+                verify(alertaRepository, never()).findAll(ArgumentMatchers.<Specification<Alerta>>any(),
+                                any(Pageable.class));
         }
 
         @Test
@@ -606,7 +607,8 @@ class AlertaServiceTest {
                                 () -> alertaService.listarAlertas(null, "inactivo@example.com", pageable));
 
                 assertEquals("El usuario se encuentra inactivo", exception.getMessage());
-                verify(alertaRepository, never()).findAll(ArgumentMatchers.<Specification<Alerta>>any(), any(Pageable.class));
+                verify(alertaRepository, never()).findAll(ArgumentMatchers.<Specification<Alerta>>any(),
+                                any(Pageable.class));
         }
 
         @Test
@@ -677,6 +679,7 @@ class AlertaServiceTest {
                 assertTrue(alertaOriginal.getEsAnonimo());
                 verify(alertaRepository).save(alertaOriginal);
         }
+
         @Test
         @DisplayName("Debe asignar por defecto la ubicacion del usuario y tolerar filtro nulo al listar alertas")
         void listarAlertasSinFiltroUbicacionTomaUbicacionUsuario() {
@@ -699,13 +702,15 @@ class AlertaServiceTest {
                                                 .estado(EstadoAlerta.PENDIENTE_REVISION).totalEvidencias(0).build());
 
                 // 1. Validar tolerancia a null (filtro == null)
-                Page<AlertaResponseDto> resultadoNull = alertaService.listarAlertas(null, "carlos@example.com", pageable);
+                Page<AlertaResponseDto> resultadoNull = alertaService.listarAlertas(null, "carlos@example.com",
+                                pageable);
                 assertNotNull(resultadoNull);
                 assertEquals(1, resultadoNull.getContent().size());
 
                 // 2. Validar asignacion automatica de ubicacion cuando se pasa filtro vacio
                 FiltroAlertaDto filtroVacio = new FiltroAlertaDto();
-                Page<AlertaResponseDto> resultadoVacio = alertaService.listarAlertas(filtroVacio, "carlos@example.com", pageable);
+                Page<AlertaResponseDto> resultadoVacio = alertaService.listarAlertas(filtroVacio, "carlos@example.com",
+                                pageable);
                 assertNotNull(resultadoVacio);
                 assertEquals("Antioquia", filtroVacio.getDepartamento());
                 assertEquals("Medellin", filtroVacio.getMunicipio());
