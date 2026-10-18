@@ -1,6 +1,5 @@
 package redalerta_backend.modules.alerta.service.impl;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,6 +25,7 @@ import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
+import redalerta_backend.modules.usuario.valueobject.Rol;
 
 /**
  * Implementacion del servicio para la publicacion y consulta de alertas por
@@ -34,7 +34,6 @@ import redalerta_backend.modules.usuario.repository.UsuarioRepository;
  * IDOR.
  */
 @Service
-@RequiredArgsConstructor
 public class AlertaServiceImpl implements AlertaService {
 
     private static final int MAX_EVIDENCIAS_PERMITIDAS = 5;
@@ -43,6 +42,18 @@ public class AlertaServiceImpl implements AlertaService {
     private final UsuarioRepository usuarioRepository;
     private final AlertaMapper alertaMapper;
     private final StorageService storageService;
+
+    public AlertaServiceImpl(
+            AlertaRepository alertaRepository,
+            UsuarioRepository usuarioRepository,
+            AlertaMapper alertaMapper,
+            StorageService storageService) {
+        super();
+        this.alertaRepository = alertaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.alertaMapper = alertaMapper;
+        this.storageService = storageService;
+    }
 
     /**
      * {@inheritDoc}
@@ -107,13 +118,14 @@ public class AlertaServiceImpl implements AlertaService {
             filtro = new FiltroAlertaDto();
         }
 
-        // Si no se proporcionaron filtros geograficos, por defecto se filtran por la ubicacion del usuario
-        if ((filtro.getDepartamento() == null || filtro.getDepartamento().isBlank()) &&
-                (filtro.getMunicipio() == null || filtro.getMunicipio().isBlank())) {
-            if (usuario.getUbicacion() != null) {
-                filtro.setDepartamento(usuario.getUbicacion().departamento());
-                filtro.setMunicipio(usuario.getUbicacion().municipio());
-            }
+        // El filtro de departamento es un valor fijo ligado obligatoriamente a la ubicacion del usuario autenticado
+        if (usuario.getUbicacion() != null && usuario.getRol() != Rol.ROLE_ADMIN) {
+            filtro.setDepartamento(usuario.getUbicacion().departamento());
+        }
+
+        // Si el municipio viene en blanco, se establece en null para consultar todos los municipios del departamento
+        if (filtro.getMunicipio() != null && filtro.getMunicipio().isBlank()) {
+            filtro.setMunicipio(null);
         }
 
         if (filtro.getFechaInicio() != null && filtro.getFechaFin() != null) {

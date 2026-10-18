@@ -34,13 +34,13 @@ public interface AlertaService {
     /**
      * Retorna el listado paginado de alertas comunitarias aplicando los filtros
      * especificados.
-     * Soporta filtrado por departamento, municipio, estado y rango de fechas.
+     * El filtro por departamento es un valor fijo e inmutable determinado por la
+     * ubicacion territorial del usuario autenticado. El filtrado por municipio es opcional,
+     * permitiendo consultar todas las alertas del departamento o las de un municipio puntual.
      * Si no se especifica un estado puntual, retorna por defecto las alertas en
-     * estados activos
-     * (PENDIENTE_REVISION, DIRECCIONADA, EN_GESTION).
+     * estados activos (PENDIENTE_REVISION, DIRECCIONADA, EN_GESTION).
      *
-     * @param filtro       Criterios opcionales de filtrado (departamento,
-     *                     municipio, estado, rango de fechas).
+     * @param filtro       Criterios de filtrado (municipio opcional, estado, rango de fechas).
      * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
      * @param pageable     Configuracion de paginacion y ordenamiento.
      * @return Pagina de alertas que cumplen con los criterios de busqueda.
