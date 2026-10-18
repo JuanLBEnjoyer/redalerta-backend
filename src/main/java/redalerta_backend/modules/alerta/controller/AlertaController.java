@@ -140,11 +140,11 @@ public class AlertaController {
 
     /**
      * Consulta el listado general paginado de alertas comunitarias con soporte de filtros.
-     * Permite filtrar opcionalmente por departamento, municipio, estado puntual y rango de fechas (fechaInicio y fechaFin).
+     * El departamento es un valor fijo e inmutable determinado por la ubicacion del usuario autenticado.
+     * Permite filtrar opcionalmente por municipio territorial, estado puntual y rango de fechas.
      * Por defecto retorna las alertas activas (PENDIENTE_REVISION, DIRECCIONADA, EN_GESTION).
      *
-     * @param departamento Nombre del departamento territorial a filtrar (opcional).
-     * @param municipio Nombre del municipio territorial a filtrar (opcional).
+     * @param municipio Municipio territorial dentro del departamento del usuario por el cual filtrar (opcional).
      * @param estado Estado especifico por el cual filtrar (opcional).
      * @param fechaInicio Fecha inicial para el rango de creacion (opcional, formato YYYY-MM-DD).
      * @param fechaFin Fecha final para el rango de creacion (opcional, formato YYYY-MM-DD).
@@ -152,7 +152,10 @@ public class AlertaController {
      * @param authentication Contexto de seguridad inyectado con el usuario autenticado.
      * @return Pagina de alertas comunitarias que cumplen con los filtros.
      */
-    @Operation(summary = "Listar alertas con filtros", description = "Obtiene un listado paginado de alertas activas o filtradas por ubicacion (departamento, municipio), estado y rango de fechas.")
+    @Operation(
+            summary = "Listar alertas con filtros",
+            description = "Obtiene un listado paginado de alertas activas o filtradas. El departamento es un valor fijo ligado a la cuenta del usuario autenticado. Permite filtrar opcionalmente por municipio territorial, estado y rango de fechas."
+    )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de alertas recuperado exitosamente"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Parametros de filtro invalidos (ej. fecha de inicio posterior a fecha de fin)",
@@ -165,15 +168,17 @@ public class AlertaController {
     @GetMapping
     @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
     public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarAlertas(
-            @RequestParam(required = false) String departamento,
+            @Parameter(description = "Municipio territorial dentro del departamento del usuario para filtrar (opcional)")
             @RequestParam(required = false) String municipio,
+            @Parameter(description = "Estado puntual de la alerta (opcional)")
             @RequestParam(required = false) EstadoAlerta estado,
+            @Parameter(description = "Fecha inicial del rango de creacion (opcional, formato YYYY-MM-DD)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @Parameter(description = "Fecha final del rango de creacion (opcional, formato YYYY-MM-DD)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
         FiltroAlertaDto filtro = FiltroAlertaDto.builder()
-                .departamento(departamento)
                 .municipio(municipio)
                 .estado(estado)
                 .fechaInicio(fechaInicio)
