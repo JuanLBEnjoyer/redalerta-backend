@@ -29,6 +29,10 @@ public class UsuarioMapper {
     }
 
     public UsuarioResponseDto toResponseDto(Usuario usuario) {
+        return toResponseDto(usuario, null);
+    }
+
+    public UsuarioResponseDto toResponseDto(Usuario usuario, CaracterizacionUsuario caracterizacion) {
         if (usuario == null) {
             return null;
         }
@@ -43,7 +47,7 @@ public class UsuarioMapper {
                 .rol(usuario.getRol())
                 .activo(usuario.getActivo())
                 .fechaRegistro(usuario.getFechaRegistro())
-                .caracterizacion(toCaracterizacionResponseDto(usuario.getCaracterizacion()))
+                .caracterizacion(toCaracterizacionResponseDto(caracterizacion))
                 .build();
     }
 

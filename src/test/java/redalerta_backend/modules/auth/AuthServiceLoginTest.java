@@ -18,6 +18,7 @@ import redalerta_backend.modules.auth.dto.UsuarioSesionDto;
 import redalerta_backend.modules.auth.service.impl.AuthServiceImpl;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
+import redalerta_backend.modules.usuario.repository.CaracterizacionUsuarioRepository;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
@@ -31,6 +32,9 @@ class AuthServiceLoginTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private CaracterizacionUsuarioRepository caracterizacionRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;

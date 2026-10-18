@@ -12,6 +12,7 @@ import redalerta_backend.modules.usuario.dto.ActualizarPerfilRequestDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
+import redalerta_backend.modules.usuario.repository.CaracterizacionUsuarioRepository;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.service.UsuarioService;
 
@@ -25,6 +26,7 @@ import redalerta_backend.modules.usuario.service.UsuarioService;
 public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final CaracterizacionUsuarioRepository caracterizacionRepository;
     private final PasswordEncoder passwordEncoder;
     private final UsuarioMapper usuarioMapper;
 
@@ -35,7 +37,8 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional(readOnly = true)
     public UsuarioResponseDto obtenerPerfil(String email) {
         Usuario usuario = buscarUsuarioPorEmail(email);
-        return usuarioMapper.toResponseDto(usuario);
+        var caracterizacion = caracterizacionRepository.findByUsuarioId(usuario.getId()).orElse(null);
+        return usuarioMapper.toResponseDto(usuario, caracterizacion);
     }
 
     /**
@@ -79,7 +82,8 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         // 5. Persistir cambios
         Usuario usuarioActualizado = usuarioRepository.save(usuario);
-        return usuarioMapper.toResponseDto(usuarioActualizado);
+        var caracterizacion = caracterizacionRepository.findByUsuarioId(usuarioActualizado.getId()).orElse(null);
+        return usuarioMapper.toResponseDto(usuarioActualizado, caracterizacion);
     }
 
     private Usuario buscarUsuarioPorEmail(String emailStr) {

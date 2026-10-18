@@ -238,6 +238,17 @@ public class AlertaServiceImpl implements AlertaService {
     }
 
     private Usuario buscarUsuarioPorEmail(String email) {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof redalerta_backend.config.security.UsuarioPrincipal principal) {
+            Usuario usuario = principal.usuario();
+            if (usuario != null && usuario.getEmail() != null && usuario.getEmail().equalsIgnoreCase(email)) {
+                if (Boolean.FALSE.equals(usuario.getActivo())) {
+                    throw new UnauthorizedException("El usuario se encuentra inactivo");
+                }
+                return usuario;
+            }
+        }
+
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + email));
 

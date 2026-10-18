@@ -7,6 +7,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 
+import redalerta_backend.modules.usuario.valueobject.Ubicacion;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class JwtServiceTest {
@@ -21,12 +23,13 @@ class JwtServiceTest {
     }
 
     @Test
-    @DisplayName("Debe generar un token JWT válido y extraer el username")
+    @DisplayName("Debe generar un token JWT válido y extraer el username, rol, id y ubicacion")
     void testGenerarYExtraerToken() {
         Usuario usuario = Usuario.builder()
                 .id(1L)
                 .nombre("Juan Perez")
                 .email("juan@example.com")
+                .ubicacion(new Ubicacion("Quindio", "Armenia", "Calle 10 # 20-30"))
                 .rol(Rol.ROLE_CIUDADANO)
                 .activo(true)
                 .build();
@@ -36,6 +39,10 @@ class JwtServiceTest {
         assertNotNull(token);
         assertFalse(token.isBlank());
         assertEquals("juan@example.com", jwtService.extractUsername(token));
+        assertEquals(1L, jwtService.extractUserId(token));
+        assertEquals("ROLE_CIUDADANO", jwtService.extractRol(token));
+        assertEquals("Quindio", jwtService.extractDepartamento(token));
+        assertEquals("Armenia", jwtService.extractMunicipio(token));
         assertTrue(jwtService.isTokenValid(token));
     }
 }
