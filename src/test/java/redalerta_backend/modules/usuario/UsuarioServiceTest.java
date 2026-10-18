@@ -12,6 +12,8 @@ import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.EmailAlreadyExistException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.modules.usuario.dto.ActualizarPerfilRequestDto;
+import redalerta_backend.modules.usuario.dto.UbicacionRequestDto;
+import redalerta_backend.modules.usuario.dto.UbicacionResponseDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
@@ -20,6 +22,7 @@ import redalerta_backend.modules.usuario.service.impl.UsuarioServiceImpl;
 import redalerta_backend.modules.usuario.valueobject.Documento;
 import redalerta_backend.modules.usuario.valueobject.Rol;
 import redalerta_backend.modules.usuario.valueobject.TipoDeDocumento;
+import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 import java.util.Optional;
 
@@ -181,5 +184,50 @@ class UsuarioServiceTest {
         );
 
         verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe actualizar perfil y ubicacion de residencia exitosamente")
+    void actualizarPerfilConUbicacionExitoso() {
+        UbicacionRequestDto nuevaUbicacionDto = UbicacionRequestDto.builder()
+                .departamento("Caldas")
+                .municipio("Manizales")
+                .direccionResidencia("Carrera 23 # 45-67")
+                .build();
+
+        Ubicacion nuevaUbicacionVo = new Ubicacion("Caldas", "Manizales", "Carrera 23 # 45-67");
+
+        ActualizarPerfilRequestDto request = ActualizarPerfilRequestDto.builder()
+                .nombre("Maria Gomez Actualizado")
+                .email("maria@example.com")
+                .telefono("3101112233")
+                .ubicacion(nuevaUbicacionDto)
+                .build();
+
+        when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
+        when(usuarioMapper.toUbicacion(nuevaUbicacionDto)).thenReturn(nuevaUbicacionVo);
+        when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioMock);
+        when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
+                UsuarioResponseDto.builder()
+                        .id(1L)
+                        .nombre("Maria Gomez Actualizado")
+                        .email("maria@example.com")
+                        .ubicacion(UbicacionResponseDto.builder()
+                                .departamento("Caldas")
+                                .municipio("Manizales")
+                                .direccionResidencia("Carrera 23 # 45-67")
+                                .build())
+                        .build()
+        );
+
+        UsuarioResponseDto respuesta = usuarioService.actualizarPerfil("maria@example.com", request);
+
+        assertNotNull(respuesta);
+        assertEquals("Maria Gomez Actualizado", respuesta.getNombre());
+        assertNotNull(respuesta.getUbicacion());
+        assertEquals("Caldas", respuesta.getUbicacion().getDepartamento());
+        assertEquals("Manizales", respuesta.getUbicacion().getMunicipio());
+        verify(usuarioMapper, times(1)).toUbicacion(nuevaUbicacionDto);
+        verify(usuarioRepository, times(1)).save(usuarioMock);
     }
 }

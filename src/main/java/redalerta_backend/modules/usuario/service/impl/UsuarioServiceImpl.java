@@ -61,7 +61,12 @@ public class UsuarioServiceImpl implements UsuarioService {
                 ? request.getTelefono().trim()
                 : null);
 
-        // 3. Gestion segura de cambio de contrasena
+        // 3. Actualizar ubicacion de residencia si fue suministrada
+        if (request.getUbicacion() != null) {
+            usuario.setUbicacion(usuarioMapper.toUbicacion(request.getUbicacion()));
+        }
+
+        // 4. Gestion segura de cambio de contrasena
         if (request.getPasswordNuevo() != null && !request.getPasswordNuevo().isBlank()) {
             if (request.getPasswordActual() == null || request.getPasswordActual().isBlank()) {
                 throw new BadRequestException("Debe ingresar su contraseña actual para definir una nueva");
@@ -72,7 +77,7 @@ public class UsuarioServiceImpl implements UsuarioService {
             usuario.setPassword(passwordEncoder.encode(request.getPasswordNuevo().trim()));
         }
 
-        // 4. Persistir cambios
+        // 5. Persistir cambios
         Usuario usuarioActualizado = usuarioRepository.save(usuario);
         return usuarioMapper.toResponseDto(usuarioActualizado);
     }

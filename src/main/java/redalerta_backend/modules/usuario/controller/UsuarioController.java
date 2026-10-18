@@ -56,13 +56,13 @@ public class UsuarioController {
     }
 
     /**
-     * Actualiza los datos personales permitidos (nombre, email, telefono y contrasena) del usuario autenticado.
+     * Actualiza los datos personales permitidos (nombre, email, telefono, ubicacion de residencia y contrasena) del usuario autenticado.
      *
      * @param authentication Contexto de seguridad inyectado con los datos del token JWT.
      * @param request        Cuerpo con los campos a modificar.
      * @return Envoltorio con la informacion actualizada del perfil.
      */
-    @Operation(summary = "Actualizar perfil", description = "Modifica los datos permitidos del usuario autenticado. Para cambiar la contrasena se debe suministrar la clave actual.")
+    @Operation(summary = "Actualizar perfil", description = "Modifica los datos permitidos del usuario autenticado, incluyendo su ubicacion de residencia. Para cambiar la contrasena se debe suministrar la clave actual.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Perfil actualizado exitosamente"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de entrada invalidos o contrasena actual incorrecta",

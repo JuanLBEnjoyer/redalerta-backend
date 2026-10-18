@@ -1,6 +1,7 @@
 package redalerta_backend.modules.usuario.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -33,6 +34,10 @@ public class ActualizarPerfilRequestDto {
     @Size(max = 20, message = "El telefono no puede superar los 20 caracteres")
     @Schema(description = "Numero telefonico de contacto", example = "3109876543")
     private String telefono;
+
+    @Valid
+    @Schema(description = "Datos territoriales y direccion de residencia del usuario (opcional si no se modifica)")
+    private UbicacionRequestDto ubicacion;
 
     @Schema(description = "Contrasena actual (requerida solo si se va a modificar la contrasena)", example = "PasswordActual123*")
     private String passwordActual;
