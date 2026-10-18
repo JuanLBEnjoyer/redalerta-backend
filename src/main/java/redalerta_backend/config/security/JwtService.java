@@ -41,6 +41,10 @@ public class JwtService {
         extraClaims.put("userId", usuario.getId());
         extraClaims.put("rol", usuario.getRol().name());
         extraClaims.put("nombre", usuario.getNombre());
+        if (usuario.getUbicacion() != null) {
+            extraClaims.put("departamento", usuario.getUbicacion().departamento());
+            extraClaims.put("municipio", usuario.getUbicacion().municipio());
+        }
         return buildToken(extraClaims, usuario.getEmail(), jwtExpiration);
     }
 
@@ -107,6 +111,26 @@ public class JwtService {
      */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public Long extractUserId(String token) {
+        Object val = extractClaim(token, claims -> claims.get("userId"));
+        if (val instanceof Number num) {
+            return num.longValue();
+        }
+        return null;
+    }
+
+    public String extractRol(String token) {
+        return extractClaim(token, claims -> claims.get("rol", String.class));
+    }
+
+    public String extractDepartamento(String token) {
+        return extractClaim(token, claims -> claims.get("departamento", String.class));
+    }
+
+    public String extractMunicipio(String token) {
+        return extractClaim(token, claims -> claims.get("municipio", String.class));
     }
 
     /**

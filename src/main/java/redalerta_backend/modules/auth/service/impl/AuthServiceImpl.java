@@ -19,6 +19,7 @@ import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.CaracterizacionUsuario;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
+import redalerta_backend.modules.usuario.repository.CaracterizacionUsuarioRepository;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Documento;
 import redalerta_backend.modules.usuario.valueobject.Genero;
@@ -28,21 +29,22 @@ import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 /**
  * Implementacion del servicio de autenticacion y registro de usuarios.
  * Aplica principios de Domain-Driven Design (DDD) con Value Objects inmutables,
- * persistencia en cascada y seguridad defensiva contra enumeracion de cuentas.
+ * persistencia desacoplada y seguridad defensiva contra enumeracion de cuentas.
  */
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UsuarioRepository usuarioRepository;
+    private final CaracterizacionUsuarioRepository caracterizacionRepository;
     private final PasswordEncoder passwordEncoder;
     private final UsuarioMapper usuarioMapper;
     private final JwtService jwtService;
 
     /**
      * {@inheritDoc}
-     * Persiste el usuario y su entidad de caracterizacion en cascada (CascadeType.ALL)
-     * asegurando atomicidad transaccional.
+     * Persiste el usuario y su caracterizacion social de forma desacoplada
+     * dentro de una transaccion atomica.
      */
     @Override
     @Transactional
@@ -73,11 +75,14 @@ public class AuthServiceImpl implements AuthService {
                 .activo(true)
                 .build();
 
+        Usuario usuarioGuardado = usuarioRepository.save(nuevoUsuario);
+
         CaracterizacionRequestDto caracDto = request.getCaracterizacion();
         boolean gestacionLactancia = caracDto.getGenero() == Genero.FEMENINO
                 && Boolean.TRUE.equals(caracDto.getEnGestacionLactancia());
 
         CaracterizacionUsuario caracterizacion = CaracterizacionUsuario.builder()
+                .usuario(usuarioGuardado)
                 .fechaNacimiento(caracDto.getFechaNacimiento())
                 .genero(caracDto.getGenero())
                 .enGestacionLactancia(gestacionLactancia)
@@ -93,11 +98,9 @@ public class AuthServiceImpl implements AuthService {
                         ? caracDto.getEspecificacionGrupoEtnico() : null)
                 .build();
 
-        nuevoUsuario.setCaracterizacion(caracterizacion);
+        CaracterizacionUsuario caracterizacionGuardada = caracterizacionRepository.save(caracterizacion);
 
-        Usuario usuarioGuardado = usuarioRepository.save(nuevoUsuario);
-
-        return usuarioMapper.toResponseDto(usuarioGuardado);
+        return usuarioMapper.toResponseDto(usuarioGuardado, caracterizacionGuardada);
     }
 
     /**

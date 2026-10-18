@@ -20,6 +20,8 @@ import redalerta_backend.modules.usuario.dto.UbicacionResponseDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
+import redalerta_backend.modules.usuario.entity.CaracterizacionUsuario;
+import redalerta_backend.modules.usuario.repository.CaracterizacionUsuarioRepository;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Documento;
 import redalerta_backend.modules.usuario.valueobject.Genero;
@@ -31,6 +33,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +41,9 @@ class AuthServiceRegistroTest {
 
         @Mock
         private UsuarioRepository usuarioRepository;
+
+        @Mock
+        private CaracterizacionUsuarioRepository caracterizacionRepository;
 
         @Mock
         private PasswordEncoder passwordEncoder;
@@ -114,7 +120,8 @@ class AuthServiceRegistroTest {
                                 .build();
 
                 when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioGuardado);
-                when(usuarioMapper.toResponseDto(usuarioGuardado)).thenReturn(
+                when(caracterizacionRepository.save(any(CaracterizacionUsuario.class))).thenAnswer(i -> i.getArgument(0));
+                when(usuarioMapper.toResponseDto(eq(usuarioGuardado), any(CaracterizacionUsuario.class))).thenReturn(
                                 UsuarioResponseDto.builder()
                                                 .id(1L)
                                                 .nombre("Maria Gomez")
@@ -131,6 +138,7 @@ class AuthServiceRegistroTest {
                 assertEquals("maria@example.com", respuesta.getEmail());
                 assertEquals(Rol.ROLE_CIUDADANO, respuesta.getRol());
                 verify(usuarioRepository, times(1)).save(any(Usuario.class));
+                verify(caracterizacionRepository, times(1)).save(any(CaracterizacionUsuario.class));
         }
 
         @Test

@@ -17,6 +17,7 @@ import redalerta_backend.modules.usuario.dto.UbicacionResponseDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.mapper.UsuarioMapper;
+import redalerta_backend.modules.usuario.repository.CaracterizacionUsuarioRepository;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.service.impl.UsuarioServiceImpl;
 import redalerta_backend.modules.usuario.valueobject.Documento;
@@ -28,6 +29,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +37,9 @@ class UsuarioServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private CaracterizacionUsuarioRepository caracterizacionRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -65,7 +70,7 @@ class UsuarioServiceTest {
     @DisplayName("Debe obtener el perfil del usuario autenticado exitosamente")
     void obtenerPerfilExitoso() {
         when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
-        when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
+        when(usuarioMapper.toResponseDto(eq(usuarioMock), any())).thenReturn(
                 UsuarioResponseDto.builder()
                         .id(1L)
                         .nombre("Maria Gomez")
@@ -101,7 +106,7 @@ class UsuarioServiceTest {
 
         when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioMock);
-        when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
+        when(usuarioMapper.toResponseDto(eq(usuarioMock), any())).thenReturn(
                 UsuarioResponseDto.builder()
                         .id(1L)
                         .nombre("Maria Gomez Actualizado")
@@ -134,7 +139,7 @@ class UsuarioServiceTest {
         when(passwordEncoder.matches("PasswordActual123*", "$2a$10$hashedActual")).thenReturn(true);
         when(passwordEncoder.encode("PasswordNuevo456*")).thenReturn("$2a$10$hashedNuevo");
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioMock);
-        when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
+        when(usuarioMapper.toResponseDto(eq(usuarioMock), any())).thenReturn(
                 UsuarioResponseDto.builder().id(1L).email("maria@example.com").build()
         );
 
@@ -207,7 +212,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
         when(usuarioMapper.toUbicacion(nuevaUbicacionDto)).thenReturn(nuevaUbicacionVo);
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioMock);
-        when(usuarioMapper.toResponseDto(usuarioMock)).thenReturn(
+        when(usuarioMapper.toResponseDto(eq(usuarioMock), any())).thenReturn(
                 UsuarioResponseDto.builder()
                         .id(1L)
                         .nombre("Maria Gomez Actualizado")
