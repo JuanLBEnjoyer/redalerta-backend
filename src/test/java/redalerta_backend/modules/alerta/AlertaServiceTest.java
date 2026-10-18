@@ -707,15 +707,26 @@ class AlertaServiceTest {
                 assertNotNull(resultadoNull);
                 assertEquals(1, resultadoNull.getContent().size());
 
-                // 2. Validar asignacion automatica de ubicacion cuando se pasa filtro vacio
+                // 2. Validar asignacion forzada de departamento del usuario cuando se pasa filtro vacio
                 FiltroAlertaDto filtroVacio = new FiltroAlertaDto();
                 Page<AlertaResponseDto> resultadoVacio = alertaService.listarAlertas(filtroVacio, "carlos@example.com",
                                 pageable);
                 assertNotNull(resultadoVacio);
                 assertEquals("Antioquia", filtroVacio.getDepartamento());
-                assertEquals("Medellin", filtroVacio.getMunicipio());
+                assertNull(filtroVacio.getMunicipio()); // Permite consultar todos los municipios del departamento
 
-                verify(alertaRepository, times(2)).findAll(ArgumentMatchers.<Specification<Alerta>>any(), eq(pageable));
+                // 3. Validar que cualquier departamento externo enviado es sobreescrito por el del usuario
+                FiltroAlertaDto filtroConOtroDepto = FiltroAlertaDto.builder()
+                                .departamento("Santander")
+                                .municipio("Bello")
+                                .build();
+                Page<AlertaResponseDto> resultadoOtro = alertaService.listarAlertas(filtroConOtroDepto, "carlos@example.com",
+                                pageable);
+                assertNotNull(resultadoOtro);
+                assertEquals("Antioquia", filtroConOtroDepto.getDepartamento());
+                assertEquals("Bello", filtroConOtroDepto.getMunicipio());
+
+                verify(alertaRepository, times(3)).findAll(ArgumentMatchers.<Specification<Alerta>>any(), eq(pageable));
         }
 
         @Test
