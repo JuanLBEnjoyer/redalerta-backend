@@ -35,19 +35,24 @@ public final class AlertaSpecification {
             List<Predicate> predicates = new ArrayList<>();
 
             if (filtro != null) {
-                // Filtro por departamento territorial (case-insensitive)
+                // Filtro por departamento territorial (case-insensitive y canonicalizado)
                 if (filtro.getDepartamento() != null && !filtro.getDepartamento().isBlank()) {
+                    String canonicoDepto = redalerta_backend.modules.catalogo.domain.CatalogoGeografico.canonicalizarDepartamento(filtro.getDepartamento());
                     predicates.add(cb.equal(
                             cb.lower(root.get("ubicacion").get("departamento")),
-                            filtro.getDepartamento().trim().toLowerCase()
+                            canonicoDepto.trim().toLowerCase()
                     ));
                 }
 
-                // Filtro por municipio territorial (case-insensitive)
+                // Filtro por municipio territorial (case-insensitive y canonicalizado)
                 if (filtro.getMunicipio() != null && !filtro.getMunicipio().isBlank()) {
+                    String canonicoMuni = redalerta_backend.modules.catalogo.domain.CatalogoGeografico.canonicalizarMunicipio(
+                            filtro.getDepartamento(),
+                            filtro.getMunicipio()
+                    );
                     predicates.add(cb.equal(
                             cb.lower(root.get("ubicacion").get("municipio")),
-                            filtro.getMunicipio().trim().toLowerCase()
+                            canonicoMuni.trim().toLowerCase()
                     ));
                 }
 

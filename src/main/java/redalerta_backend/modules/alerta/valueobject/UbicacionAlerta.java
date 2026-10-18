@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import redalerta_backend.common.exception.BadRequestException;
 
+import redalerta_backend.modules.catalogo.domain.CatalogoGeografico;
+
 /**
  * Value Object inmutable que encapsula la ubicacion geografica normalizada de
  * una alerta.
@@ -27,8 +29,8 @@ public record UbicacionAlerta(
         if (direccionDetallada == null || direccionDetallada.isBlank()) {
             throw new BadRequestException("La direccion detallada o punto de referencia es obligatoria");
         }
-        departamento = departamento.trim();
-        municipio = municipio.trim();
+        departamento = CatalogoGeografico.canonicalizarDepartamento(departamento);
+        municipio = CatalogoGeografico.canonicalizarMunicipio(departamento, municipio);
         direccionDetallada = direccionDetallada.trim();
     }
 }
