@@ -38,8 +38,17 @@ public class AlertaResponseDto {
     @Schema(description = "Estado inicial de la alerta", example = "PENDIENTE_REVISION")
     private EstadoAlerta estado;
 
+    @Schema(description = "Categoria tematica de la alerta", example = "DESASTRE_NATURAL")
+    private redalerta_backend.modules.alerta.valueobject.CategoriaAlerta categoria;
+
+    @Schema(description = "Nivel de prioridad o urgencia asignado a la alerta", example = "ALTA")
+    private redalerta_backend.modules.alerta.valueobject.PrioridadAlerta prioridad;
+
     @Schema(description = "Evidencias fotograficas adjuntas")
     private List<EvidenciaResponseDto> evidencias;
+
+    @Schema(description = "Historial cronologico de cambios de estado y acciones ejecutadas")
+    private List<RegistroHistorialResponseDto> historial;
 
     @Schema(description = "Indica si la alerta fue publicada de forma anonima", example = "false")
     private Boolean esAnonimo;
