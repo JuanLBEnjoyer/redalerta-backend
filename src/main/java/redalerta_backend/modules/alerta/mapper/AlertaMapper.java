@@ -29,6 +29,11 @@ public class AlertaMapper {
         Long autorId = esAnonimo ? null : (alerta.getAutor() != null ? alerta.getAutor().getId() : null);
         String autorNombre = esAnonimo ? "Anónimo" : (alerta.getAutor() != null ? alerta.getAutor().getNombre() : null);
 
+        Long liderId = alerta.getLiderComunitario() != null ? alerta.getLiderComunitario().getId() : null;
+        String liderNombre = alerta.getLiderComunitario() != null ? alerta.getLiderComunitario().getNombre() : null;
+        Long orgId = alerta.getOrganizacionAsignada() != null ? alerta.getOrganizacionAsignada().getId() : null;
+        String orgNombre = alerta.getOrganizacionAsignada() != null ? alerta.getOrganizacionAsignada().getNombre() : null;
+
         return AlertaResponseDto.builder()
                 .id(alerta.getId())
                 .descripcion(alerta.getDescripcion())
@@ -42,6 +47,11 @@ public class AlertaMapper {
                 .totalEvidencias(totalEvidencias)
                 .evidencias(toEvidenciaResponseDtoList(alerta.getEvidencias()))
                 .historial(toHistorialResponseDtoList(alerta.getHistorial()))
+                .liderId(liderId)
+                .liderNombre(liderNombre)
+                .organizacionId(orgId)
+                .organizacionNombre(orgNombre)
+                .observacionTecnica(alerta.getObservacionTecnica())
                 .fechaCreacion(alerta.getFechaCreacion())
                 .build();
     }
@@ -55,6 +65,11 @@ public class AlertaMapper {
         boolean esAnonimo = Boolean.TRUE.equals(alerta.getEsAnonimo());
         Long autorId = esAnonimo ? null : (alerta.getAutor() != null ? alerta.getAutor().getId() : null);
         String autorNombre = esAnonimo ? "Anónimo" : (alerta.getAutor() != null ? alerta.getAutor().getNombre() : null);
+
+        Long liderId = alerta.getLiderComunitario() != null ? alerta.getLiderComunitario().getId() : null;
+        String liderNombre = alerta.getLiderComunitario() != null ? alerta.getLiderComunitario().getNombre() : null;
+        Long orgId = alerta.getOrganizacionAsignada() != null ? alerta.getOrganizacionAsignada().getId() : null;
+        String orgNombre = alerta.getOrganizacionAsignada() != null ? alerta.getOrganizacionAsignada().getNombre() : null;
 
         List<EvidenciaResponseDto> evidenciasResumen = Collections.emptyList();
         if (alerta.getEvidencias() != null && !alerta.getEvidencias().isEmpty()) {
@@ -77,6 +92,11 @@ public class AlertaMapper {
                 .totalEvidencias(totalEvidencias)
                 .evidencias(evidenciasResumen)
                 .historial(toHistorialResponseDtoList(alerta.getHistorial()))
+                .liderId(liderId)
+                .liderNombre(liderNombre)
+                .organizacionId(orgId)
+                .organizacionNombre(orgNombre)
+                .observacionTecnica(alerta.getObservacionTecnica())
                 .fechaCreacion(alerta.getFechaCreacion())
                 .build();
     }
@@ -150,6 +170,24 @@ public class AlertaMapper {
                 .url(evidencia.getUrl())
                 .tipoMime(evidencia.getTipoMime())
                 .fechaSubida(evidencia.getFechaSubida())
+                .build();
+    }
+
+    public redalerta_backend.modules.alerta.dto.OrganizacionResponseDto toOrganizacionResponseDto(redalerta_backend.modules.usuario.entity.Usuario organizacion) {
+        if (organizacion == null) {
+            return null;
+        }
+
+        String depto = organizacion.getUbicacion() != null ? organizacion.getUbicacion().departamento() : null;
+        String muni = organizacion.getUbicacion() != null ? organizacion.getUbicacion().municipio() : null;
+
+        return redalerta_backend.modules.alerta.dto.OrganizacionResponseDto.builder()
+                .id(organizacion.getId())
+                .nombre(organizacion.getNombre())
+                .email(organizacion.getEmail())
+                .telefono(organizacion.getTelefono())
+                .departamento(depto)
+                .municipio(muni)
                 .build();
     }
 }

@@ -77,6 +77,21 @@ public class Alerta {
     @Column(length = 20)
     private PrioridadAlerta prioridad;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lider_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Usuario liderComunitario;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organizacion_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Usuario organizacionAsignada;
+
+    @Column(name = "observacion_tecnica", length = 1000)
+    private String observacionTecnica;
+
     @OneToMany(mappedBy = "alerta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     @ToString.Exclude
@@ -115,5 +130,28 @@ public class Alerta {
                 responsable.getNombre(),
                 responsable.getRol() != null ? responsable.getRol().name() : "DESCONOCIDO"
         ));
+    }
+
+    public void direccionar(
+            CategoriaAlerta categoria,
+            PrioridadAlerta prioridad,
+            Usuario organizacion,
+            Usuario lider,
+            String observacionTecnica
+    ) {
+        if (this.estado != EstadoAlerta.PENDIENTE_REVISION) {
+            throw new redalerta_backend.common.exception.BadRequestException("Solo se pueden direccionar alertas en estado PENDIENTE_REVISION");
+        }
+        this.categoria = categoria;
+        this.prioridad = prioridad;
+        this.organizacionAsignada = organizacion;
+        this.liderComunitario = lider;
+        this.observacionTecnica = observacionTecnica != null ? observacionTecnica.trim() : null;
+        this.estado = EstadoAlerta.DIRECCIONADA;
+
+        String motivoHistorial = "Alerta direccionada a " + organizacion.getNombre()
+                + (this.observacionTecnica != null && !this.observacionTecnica.isBlank() ? ". Nota técnica: " + this.observacionTecnica : "");
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.DIRECCIONADA, lider);
     }
 }

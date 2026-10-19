@@ -89,4 +89,45 @@ public interface AlertaService {
      */
     redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto subirEvidencia(
             org.springframework.web.multipart.MultipartFile archivo, String emailUsuario);
+
+    /**
+     * Consulta las organizaciones de socorro o gubernamentales elegibles en la jurisdiccion del lider.
+     *
+     * @param emailLider Correo del lider comunitario autenticado.
+     * @return Lista de organizaciones activas en la jurisdiccion territorial.
+     */
+    java.util.List<redalerta_backend.modules.alerta.dto.OrganizacionResponseDto> listarOrganizacionesElegibles(String emailLider);
+
+    /**
+     * Ejecuta el triaje y direccionamiento formal de una alerta hacia una organizacion competente.
+     * Asigna categoria, prioridad, observacion tecnica y cambia el estado a DIRECCIONADA.
+     *
+     * @param alertaId   Identificador unico de la alerta.
+     * @param request    Datos del triaje (categoria, prioridad, organizacionId, observacionTecnica).
+     * @param emailLider Correo del lider comunitario autenticado.
+     * @return Alerta direccionada con historial actualizado.
+     */
+    AlertaResponseDto direccionarAlerta(
+            Long alertaId,
+            redalerta_backend.modules.alerta.dto.DireccionarAlertaRequestDto request,
+            String emailLider
+    );
+
+    /**
+     * Consulta el listado de alertas que han sido direccionadas por el lider comunitario autenticado.
+     *
+     * @param emailLider Correo del lider comunitario autenticado.
+     * @param pageable   Configuracion de paginacion.
+     * @return Pagina de alertas direccionadas por el lider.
+     */
+    Page<AlertaResponseDto> listarAlertasDireccionadasPorLider(String emailLider, Pageable pageable);
+
+    /**
+     * Consulta la bandeja de entrada de alertas asignadas a la organizacion autenticada.
+     *
+     * @param emailOrganizacion Correo de la organizacion autenticada.
+     * @param pageable          Configuracion de paginacion.
+     * @return Pagina de alertas en bandeja de atencion de la entidad.
+     */
+    Page<AlertaResponseDto> listarBandejaOrganizacion(String emailOrganizacion, Pageable pageable);
 }

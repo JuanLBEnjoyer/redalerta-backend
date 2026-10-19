@@ -56,6 +56,21 @@ public class AlertaResponseDto {
     @Schema(description = "Total de evidencias fotograficas adjuntas a la alerta", example = "4")
     private Integer totalEvidencias;
 
+    @Schema(description = "Identificador del lider comunitario responsable del triaje", example = "10")
+    private Long liderId;
+
+    @Schema(description = "Nombre del lider comunitario responsable", example = "Carlos Ramirez")
+    private String liderNombre;
+
+    @Schema(description = "Identificador de la organizacion o entidad asignada", example = "15")
+    private Long organizacionId;
+
+    @Schema(description = "Nombre de la entidad u organizacion asignada", example = "Cuerpo Oficial de Bomberos de Armenia")
+    private String organizacionNombre;
+
+    @Schema(description = "Observacion o dictamen tecnico del lider comunitario", example = "Incendio forestal activo con amenaza a zona residencial.")
+    private String observacionTecnica;
+
     @Schema(description = "Fecha y hora de creacion de la alerta")
     private LocalDateTime fechaCreacion;
 }
