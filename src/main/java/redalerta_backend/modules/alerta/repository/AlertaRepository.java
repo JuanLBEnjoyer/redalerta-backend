@@ -42,4 +42,27 @@ public interface AlertaRepository extends JpaRepository<Alerta, Long>, JpaSpecif
      * @return Pagina de alertas coincidentes.
      */
     Page<Alerta> findByEstadoOrderByFechaCreacionDesc(EstadoAlerta estado, Pageable pageable);
+
+    /**
+     * Consulta el listado paginado de alertas direccionadas por un lider comunitario especifico.
+     *
+     * @param liderId Identificador unico del lider.
+     * @param pageable Configuracion de paginacion.
+     * @return Pagina de alertas direccionadas.
+     */
+    Page<Alerta> findByLiderComunitarioIdOrderByFechaCreacionDesc(Long liderId, Pageable pageable);
+
+    /**
+     * Consulta la bandeja de alertas asignadas a una organizacion especifica en una coleccion de estados.
+     *
+     * @param organizacionId Identificador unico de la entidad u organizacion.
+     * @param estados Estados de atencion esperados (ej. DIRECCIONADA, EN_GESTION).
+     * @param pageable Configuracion de paginacion.
+     * @return Pagina de alertas en bandeja de entrada de la organizacion.
+     */
+    Page<Alerta> findByOrganizacionAsignadaIdAndEstadoInOrderByFechaCreacionDesc(
+            Long organizacionId,
+            Collection<EstadoAlerta> estados,
+            Pageable pageable
+    );
 }

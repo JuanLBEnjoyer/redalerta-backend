@@ -15,4 +15,15 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByDocumento(Documento documento);
+
+    java.util.List<Usuario> findByRolAndUbicacionDepartamentoAndUbicacionMunicipioAndActivoTrue(
+            redalerta_backend.modules.usuario.valueobject.Rol rol,
+            String departamento,
+            String municipio
+    );
+
+    java.util.List<Usuario> findByRolAndUbicacionDepartamentoAndActivoTrue(
+            redalerta_backend.modules.usuario.valueobject.Rol rol,
+            String departamento
+    );
 }

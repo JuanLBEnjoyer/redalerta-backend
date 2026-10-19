@@ -5,15 +5,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
-import org.springframework.web.multipart.MultipartFile;
 import redalerta_backend.common.storage.StorageService;
+
+import java.util.List;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
+import redalerta_backend.modules.alerta.dto.CancelarDireccionamientoRequestDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.DireccionarAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.OrganizacionResponseDto;
 import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
@@ -21,6 +26,7 @@ import redalerta_backend.modules.alerta.mapper.AlertaMapper;
 import redalerta_backend.modules.alerta.repository.AlertaRepository;
 import redalerta_backend.modules.alerta.repository.AlertaSpecification;
 import redalerta_backend.modules.alerta.service.AlertaService;
+import redalerta_backend.modules.alerta.service.MensajeAlertaHelper;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 import redalerta_backend.modules.usuario.entity.Usuario;
@@ -78,7 +84,11 @@ public class AlertaServiceImpl implements AlertaService {
                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                 .build();
 
-        alerta.registrarPasoHistorial("Alerta reportada por ciudadano", EstadoAlerta.PENDIENTE_REVISION, autor);
+        alerta.registrarPasoHistorial(
+                MensajeAlertaHelper.mensajeReportada(alerta.getDescripcion()),
+                EstadoAlerta.PENDIENTE_REVISION,
+                autor
+        );
 
         if (request.getEvidenciasUrls() != null && !request.getEvidenciasUrls().isEmpty()) {
             for (String url : request.getEvidenciasUrls()) {
@@ -235,6 +245,224 @@ public class AlertaServiceImpl implements AlertaService {
     public UploadEvidenciaResponseDto subirEvidencia(MultipartFile archivo, String emailUsuario) {
         buscarUsuarioPorEmail(emailUsuario);
         return storageService.subirEvidencia(archivo, "alertas/evidencias");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrganizacionResponseDto> listarOrganizacionesElegibles(String emailLider) {
+        Usuario lider = buscarUsuarioPorEmail(emailLider);
+        if (lider.getRol() != Rol.ROLE_LIDER && lider.getRol() != Rol.ROLE_ADMIN) {
+            throw new UnauthorizedException("Acceso restringido a líderes comunitarios y administradores");
+        }
+
+        String departamento = lider.getUbicacion() != null ? lider.getUbicacion().departamento() : null;
+        String municipio = lider.getUbicacion() != null ? lider.getUbicacion().municipio() : null;
+
+        List<Usuario> organizaciones = usuarioRepository.findByRolAndUbicacionDepartamentoAndUbicacionMunicipioAndActivoTrue(
+                Rol.ROLE_ORGANIZACION,
+                departamento,
+                municipio
+        );
+
+        return organizaciones.stream()
+                .map(alertaMapper::toOrganizacionResponseDto)
+                .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public AlertaResponseDto direccionarAlerta(
+            Long alertaId,
+            DireccionarAlertaRequestDto request,
+            String emailLider
+    ) {
+        Usuario lider = buscarUsuarioPorEmail(emailLider);
+        if (lider.getRol() != Rol.ROLE_LIDER && lider.getRol() != Rol.ROLE_ADMIN) {
+            throw new UnauthorizedException("Solo un líder comunitario o administrador puede direccionar alertas");
+        }
+
+        Alerta alerta = alertaRepository.findById(alertaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + alertaId));
+
+        if (alerta.getEstado() != EstadoAlerta.PENDIENTE_REVISION) {
+            throw new BadRequestException("Solo se pueden direccionar alertas en estado PENDIENTE_REVISION");
+        }
+
+        // Validacion de jurisdiccion territorial para lider comunitario
+        if (lider.getRol() == Rol.ROLE_LIDER) {
+            if (lider.getUbicacion() == null || alerta.getUbicacion() == null) {
+                throw new BadRequestException("No es posible verificar la jurisdicción territorial de la alerta");
+            }
+            boolean mismoDepartamento = lider.getUbicacion().departamento()
+                    .equalsIgnoreCase(alerta.getUbicacion().departamento());
+            boolean mismoMunicipio = lider.getUbicacion().municipio()
+                    .equalsIgnoreCase(alerta.getUbicacion().municipio());
+
+            if (!mismoDepartamento || !mismoMunicipio) {
+                throw new UnauthorizedException("No tiene jurisdicción territorial sobre alertas de este municipio");
+            }
+        }
+
+        Usuario organizacion = usuarioRepository.findById(request.getOrganizacionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Organización no encontrada con id: " + request.getOrganizacionId()));
+
+        if (organizacion.getRol() != Rol.ROLE_ORGANIZACION) {
+            throw new BadRequestException("El usuario seleccionado no tiene rol de ORGANIZACION");
+        }
+        if (Boolean.FALSE.equals(organizacion.getActivo())) {
+            throw new BadRequestException("La organización seleccionada se encuentra inactiva");
+        }
+
+        if (organizacion.getUbicacion() != null && alerta.getUbicacion() != null) {
+            boolean mismoDeptoOrg = organizacion.getUbicacion().departamento()
+                    .equalsIgnoreCase(alerta.getUbicacion().departamento());
+            if (!mismoDeptoOrg) {
+                throw new BadRequestException("La organización seleccionada no opera en el departamento de la alerta");
+            }
+        }
+
+        alerta.direccionar(
+                request.getCategoria(),
+                request.getPrioridad(),
+                organizacion,
+                lider,
+                request.getObservacionTecnica()
+        );
+
+        Alerta alertaGuardada = alertaRepository.save(alerta);
+        return alertaMapper.toResponseDto(alertaGuardada);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AlertaResponseDto> listarAlertasDireccionadasPorLider(String emailLider, Pageable pageable) {
+        Usuario lider = buscarUsuarioPorEmail(emailLider);
+        if (lider.getRol() != Rol.ROLE_LIDER && lider.getRol() != Rol.ROLE_ADMIN) {
+            throw new UnauthorizedException("Acceso restringido a líderes comunitarios");
+        }
+
+        return alertaRepository.findByLiderComunitarioIdOrderByFechaCreacionDesc(lider.getId(), pageable)
+                .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AlertaResponseDto> listarBandejaOrganizacion(String emailOrganizacion, Pageable pageable) {
+        Usuario organizacion = buscarUsuarioPorEmail(emailOrganizacion);
+        if (organizacion.getRol() != Rol.ROLE_ORGANIZACION && organizacion.getRol() != Rol.ROLE_ADMIN) {
+            throw new UnauthorizedException("Acceso restringido a organizaciones de atención");
+        }
+
+        List<EstadoAlerta> estadosBandeja = List.of(EstadoAlerta.DIRECCIONADA, EstadoAlerta.EN_GESTION);
+        return alertaRepository.findByOrganizacionAsignadaIdAndEstadoInOrderByFechaCreacionDesc(
+                organizacion.getId(),
+                estadosBandeja,
+                pageable
+        ).map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public AlertaResponseDto modificarDireccionamiento(
+            Long alertaId,
+            DireccionarAlertaRequestDto request,
+            String emailLider
+    ) {
+        Usuario lider = buscarUsuarioPorEmail(emailLider);
+        if (lider.getRol() != Rol.ROLE_LIDER && lider.getRol() != Rol.ROLE_ADMIN) {
+            throw new UnauthorizedException("Solo un líder comunitario o administrador puede modificar el direccionamiento");
+        }
+
+        Alerta alerta = alertaRepository.findById(alertaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + alertaId));
+
+        if (alerta.getEstado() != EstadoAlerta.DIRECCIONADA) {
+            throw new BadRequestException("Solo se puede modificar el direccionamiento de alertas en estado DIRECCIONADA");
+        }
+
+        if (lider.getRol() == Rol.ROLE_LIDER) {
+            if (alerta.getLiderComunitario() != null && !alerta.getLiderComunitario().getId().equals(lider.getId())) {
+                throw new UnauthorizedException("Solo el líder comunitario que direccionó la alerta puede modificar su direccionamiento");
+            }
+        }
+
+        Usuario organizacion = usuarioRepository.findById(request.getOrganizacionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Organización no encontrada con id: " + request.getOrganizacionId()));
+
+        if (organizacion.getRol() != Rol.ROLE_ORGANIZACION) {
+            throw new BadRequestException("El usuario seleccionado no tiene rol de ORGANIZACION");
+        }
+        if (Boolean.FALSE.equals(organizacion.getActivo())) {
+            throw new BadRequestException("La organización seleccionada se encuentra inactiva");
+        }
+
+        if (organizacion.getUbicacion() != null && alerta.getUbicacion() != null) {
+            boolean mismoDeptoOrg = organizacion.getUbicacion().departamento()
+                    .equalsIgnoreCase(alerta.getUbicacion().departamento());
+            if (!mismoDeptoOrg) {
+                throw new BadRequestException("La organización seleccionada no opera en el departamento de la alerta");
+            }
+        }
+
+        alerta.modificarDireccionamiento(
+                request.getCategoria(),
+                request.getPrioridad(),
+                organizacion,
+                lider,
+                request.getObservacionTecnica()
+        );
+
+        Alerta alertaGuardada = alertaRepository.save(alerta);
+        return alertaMapper.toResponseDto(alertaGuardada);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public AlertaResponseDto cancelarDireccionamiento(
+            Long alertaId,
+            CancelarDireccionamientoRequestDto request,
+            String emailLider
+    ) {
+        Usuario lider = buscarUsuarioPorEmail(emailLider);
+        if (lider.getRol() != Rol.ROLE_LIDER && lider.getRol() != Rol.ROLE_ADMIN) {
+            throw new UnauthorizedException("Solo un líder comunitario o administrador puede cancelar el direccionamiento");
+        }
+
+        Alerta alerta = alertaRepository.findById(alertaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + alertaId));
+
+        if (alerta.getEstado() != EstadoAlerta.DIRECCIONADA) {
+            throw new BadRequestException("Solo se puede cancelar el direccionamiento de alertas en estado DIRECCIONADA");
+        }
+
+        if (lider.getRol() == Rol.ROLE_LIDER) {
+            if (alerta.getLiderComunitario() != null && !alerta.getLiderComunitario().getId().equals(lider.getId())) {
+                throw new UnauthorizedException("Solo el líder comunitario que direccionó la alerta puede cancelar su direccionamiento");
+            }
+        }
+
+        alerta.cancelarDireccionamiento(request.getMotivo(), lider);
+
+        Alerta alertaGuardada = alertaRepository.save(alerta);
+        return alertaMapper.toResponseDto(alertaGuardada);
     }
 
     private Usuario buscarUsuarioPorEmail(String email) {

@@ -32,14 +32,18 @@ import org.springframework.web.multipart.MultipartFile;
 import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
+import redalerta_backend.modules.alerta.dto.CancelarDireccionamientoRequestDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.DireccionarAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.dto.ModificarAlertaRequestDto;
+import redalerta_backend.modules.alerta.dto.OrganizacionResponseDto;
 import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
 import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Controlador REST para la publicacion y consulta de alertas por parte de ciudadanos.
@@ -272,5 +276,166 @@ public class AlertaController {
             Authentication authentication) {
         AlertaResponseDto alertaActualizada = alertaService.modificarAlerta(id, request, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(alertaActualizada, "Alerta modificada exitosamente"));
+    }
+
+    /**
+     * Consulta las organizaciones de socorro o gubernamentales elegibles dentro de la jurisdiccion territorial del lider.
+     *
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Listado de organizaciones activas elegibles.
+     */
+    @Operation(summary = "Listar organizaciones elegibles", description = "Retorna las entidades de socorro o gubernamentales activas con competencia en la jurisdiccion del lider comunitario autenticado.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de organizaciones recuperado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol LIDER o ADMIN)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/organizaciones-elegibles")
+    @PreAuthorize("hasAnyRole('LIDER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<OrganizacionResponseDto>>> listarOrganizacionesElegibles(
+            Authentication authentication) {
+        List<OrganizacionResponseDto> organizaciones = alertaService.listarOrganizacionesElegibles(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(organizaciones, "Organizaciones elegibles consultadas exitosamente"));
+    }
+
+    /**
+     * Permite a un lider comunitario evaluar, clasificar y direccionar una alerta comunitaria a una organizacion idonea.
+     *
+     * @param id             Identificador de la alerta comunitaria.
+     * @param request        Datos del triaje (categoria, prioridad, organizacionId, observacionTecnica).
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Alerta direccionada y actualizada.
+     */
+    @Operation(summary = "Direccionar alerta", description = "Permite a un lider comunitario realizar el triaje de una alerta en PENDIENTE_REVISION, clasificarla y canalizarla hacia una entidad idonea.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Alerta direccionada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de entrada invalidos o estado no permite direccionamiento",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (alerta fuera de la jurisdiccion del lider o rol no autorizado)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta u organizacion no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{id}/direccionar")
+    @PreAuthorize("hasAnyRole('LIDER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<AlertaResponseDto>> direccionarAlerta(
+            @PathVariable Long id,
+            @Valid @RequestBody DireccionarAlertaRequestDto request,
+            Authentication authentication) {
+        AlertaResponseDto alertaDireccionada = alertaService.direccionarAlerta(id, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(alertaDireccionada, "Alerta direccionada exitosamente"));
+    }
+
+    /**
+     * Consulta el listado paginado de alertas direccionadas por el lider comunitario autenticado.
+     *
+     * @param pageable       Parametros de paginacion y ordenamiento.
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Pagina de alertas direccionadas por el lider.
+     */
+    @Operation(summary = "Listar alertas direccionadas por el lider", description = "Obtiene las alertas comunitarias evaluadas y direccionadas por el lider comunitario autenticado.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de alertas direccionadas recuperado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol LIDER o ADMIN)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/lider/direccionadas")
+    @PreAuthorize("hasAnyRole('LIDER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarAlertasDireccionadas(
+            @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication authentication) {
+        Page<AlertaResponseDto> alertas = alertaService.listarAlertasDireccionadasPorLider(authentication.getName(), pageable);
+        return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas direccionadas consultadas exitosamente"));
+    }
+
+    /**
+     * Consulta la bandeja de trabajo de alertas asignadas a la organizacion de socorro o gubernamental autenticada.
+     *
+     * @param pageable       Parametros de paginacion y ordenamiento.
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Pagina de alertas en bandeja de atencion de la entidad.
+     */
+    @Operation(summary = "Bandeja de alertas para organizacion", description = "Obtiene las alertas comunitarias canalizadas hacia la entidad u organizacion de socorro autenticada.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Bandeja de alertas recuperada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (requiere rol ORGANIZACION o ADMIN)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/organizacion/bandeja")
+    @PreAuthorize("hasAnyRole('ORGANIZACION', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarBandejaOrganizacion(
+            @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication authentication) {
+        Page<AlertaResponseDto> alertas = alertaService.listarBandejaOrganizacion(authentication.getName(), pageable);
+        return ResponseEntity.ok(ApiResponse.success(alertas, "Bandeja de alertas consultada exitosamente"));
+    }
+
+    /**
+     * Permite a un lider comunitario modificar o rectificar el direccionamiento y triaje de una alerta en DIRECCIONADA.
+     *
+     * @param id             Identificador unico de la alerta.
+     * @param request        Datos corregidos del triaje (categoria, prioridad, organizacionId, observacionTecnica).
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Alerta con direccionamiento actualizado.
+     */
+    @Operation(summary = "Modificar direccionamiento de alerta", description = "Permite al lider comunitario autor rectificar categoria, prioridad, observacion o cambiar la organizacion receptora mientras la alerta continue en DIRECCIONADA.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Direccionamiento modificado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos invalidos o la alerta no se encuentra en estado DIRECCIONADA",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (no es el lider autor del direccionamiento o rol no autorizado)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta u organizacion no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{id}/direccionamiento")
+    @PreAuthorize("hasAnyRole('LIDER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<AlertaResponseDto>> modificarDireccionamiento(
+            @PathVariable Long id,
+            @Valid @RequestBody DireccionarAlertaRequestDto request,
+            Authentication authentication) {
+        AlertaResponseDto alertaActualizada = alertaService.modificarDireccionamiento(id, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(alertaActualizada, "Direccionamiento de alerta modificado exitosamente"));
+    }
+
+    /**
+     * Permite a un lider comunitario cancelar o revertir el direccionamiento de una alerta en estado DIRECCIONADA.
+     * La alerta regresa a PENDIENTE_REVISION, desvincula la entidad y registra la justificacion formal en el historial.
+     *
+     * @param id             Identificador unico de la alerta.
+     * @param request        Justificacion fundamentada de la cancelacion.
+     * @param authentication Contexto de seguridad inyectado.
+     * @return Alerta retornada a estado PENDIENTE_REVISION.
+     */
+    @Operation(summary = "Cancelar direccionamiento de alerta", description = "Permite al lider comunitario autor revertir el direccionamiento de una alerta en estado DIRECCIONADA, retornandola a revision comunitaria.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Direccionamiento cancelado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Motivo invalido o la alerta no se encuentra en estado DIRECCIONADA",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado (no es el lider autor del direccionamiento o rol no autorizado)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{id}/cancelar-direccionamiento")
+    @PreAuthorize("hasAnyRole('LIDER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<AlertaResponseDto>> cancelarDireccionamiento(
+            @PathVariable Long id,
+            @Valid @RequestBody CancelarDireccionamientoRequestDto request,
+            Authentication authentication) {
+        AlertaResponseDto alertaActualizada = alertaService.cancelarDireccionamiento(id, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(alertaActualizada, "Direccionamiento de alerta cancelado exitosamente"));
     }
 }

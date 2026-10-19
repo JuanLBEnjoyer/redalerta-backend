@@ -77,6 +77,21 @@ public class Alerta {
     @Column(length = 20)
     private PrioridadAlerta prioridad;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lider_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Usuario liderComunitario;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organizacion_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Usuario organizacionAsignada;
+
+    @Column(name = "observacion_tecnica", length = 1000)
+    private String observacionTecnica;
+
     @OneToMany(mappedBy = "alerta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     @ToString.Exclude
@@ -115,5 +130,78 @@ public class Alerta {
                 responsable.getNombre(),
                 responsable.getRol() != null ? responsable.getRol().name() : "DESCONOCIDO"
         ));
+    }
+
+    public void direccionar(
+            CategoriaAlerta categoria,
+            PrioridadAlerta prioridad,
+            Usuario organizacion,
+            Usuario lider,
+            String observacionTecnica
+    ) {
+        if (this.estado != EstadoAlerta.PENDIENTE_REVISION) {
+            throw new redalerta_backend.common.exception.BadRequestException("Solo se pueden direccionar alertas en estado PENDIENTE_REVISION");
+        }
+        this.categoria = categoria;
+        this.prioridad = prioridad;
+        this.organizacionAsignada = organizacion;
+        this.liderComunitario = lider;
+        this.observacionTecnica = observacionTecnica != null ? observacionTecnica.trim() : null;
+        this.estado = EstadoAlerta.DIRECCIONADA;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeDireccionada(
+                this.descripcion,
+                organizacion.getNombre(),
+                this.observacionTecnica
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.DIRECCIONADA, lider);
+    }
+
+    public void modificarDireccionamiento(
+            CategoriaAlerta nuevaCategoria,
+            PrioridadAlerta nuevaPrioridad,
+            Usuario nuevaOrganizacion,
+            Usuario lider,
+            String nuevaObservacionTecnica
+    ) {
+        if (this.estado != EstadoAlerta.DIRECCIONADA) {
+            throw new redalerta_backend.common.exception.BadRequestException("Solo se puede modificar el direccionamiento de alertas en estado DIRECCIONADA");
+        }
+        this.categoria = nuevaCategoria;
+        this.prioridad = nuevaPrioridad;
+        this.organizacionAsignada = nuevaOrganizacion;
+        this.observacionTecnica = nuevaObservacionTecnica != null ? nuevaObservacionTecnica.trim() : null;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeDireccionamientoModificado(
+                this.descripcion,
+                nuevaOrganizacion.getNombre(),
+                this.observacionTecnica
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.DIRECCIONADA, lider);
+    }
+
+    public void cancelarDireccionamiento(String motivo, Usuario lider) {
+        if (this.estado != EstadoAlerta.DIRECCIONADA) {
+            throw new redalerta_backend.common.exception.BadRequestException("Solo se puede cancelar el direccionamiento de alertas en estado DIRECCIONADA");
+        }
+        if (motivo == null || motivo.isBlank()) {
+            throw new redalerta_backend.common.exception.BadRequestException("El motivo de cancelación no puede estar vacío");
+        }
+
+        this.estado = EstadoAlerta.PENDIENTE_REVISION;
+        this.organizacionAsignada = null;
+        this.liderComunitario = null;
+        this.categoria = null;
+        this.prioridad = null;
+        this.observacionTecnica = null;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeDireccionamientoCancelado(
+                this.descripcion,
+                motivo
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.PENDIENTE_REVISION, lider);
     }
 }
