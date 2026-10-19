@@ -130,4 +130,35 @@ public interface AlertaService {
      * @return Pagina de alertas en bandeja de atencion de la entidad.
      */
     Page<AlertaResponseDto> listarBandejaOrganizacion(String emailOrganizacion, Pageable pageable);
+
+    /**
+     * Modifica el direccionamiento y triaje de una alerta comunitaria en estado DIRECCIONADA.
+     * Permite al lider autor o administrador corregir la categoria, prioridad, observacion o cambiar la organizacion receptora.
+     *
+     * @param alertaId   Identificador unico de la alerta.
+     * @param request    Nuevos datos del triaje (categoria, prioridad, organizacionId, observacionTecnica).
+     * @param emailLider Correo del lider comunitario autenticado.
+     * @return Alerta actualizada en su representacion DTO.
+     */
+    AlertaResponseDto modificarDireccionamiento(
+            Long alertaId,
+            redalerta_backend.modules.alerta.dto.DireccionarAlertaRequestDto request,
+            String emailLider
+    );
+
+    /**
+     * Cancela o revierte el direccionamiento de una alerta en estado DIRECCIONADA.
+     * Retorna la alerta a estado PENDIENTE_REVISION, desvincula la entidad y el lider asignado,
+     * y registra la justificacion formal en el historial de auditoria.
+     *
+     * @param alertaId   Identificador unico de la alerta.
+     * @param request    Justificacion formal de la cancelacion.
+     * @param emailLider Correo del lider comunitario autenticado.
+     * @return Alerta retornada a estado PENDIENTE_REVISION.
+     */
+    AlertaResponseDto cancelarDireccionamiento(
+            Long alertaId,
+            redalerta_backend.modules.alerta.dto.CancelarDireccionamientoRequestDto request,
+            String emailLider
+    );
 }

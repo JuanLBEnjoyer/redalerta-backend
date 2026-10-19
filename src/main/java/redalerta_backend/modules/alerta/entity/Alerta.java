@@ -149,9 +149,59 @@ public class Alerta {
         this.observacionTecnica = observacionTecnica != null ? observacionTecnica.trim() : null;
         this.estado = EstadoAlerta.DIRECCIONADA;
 
-        String motivoHistorial = "Alerta direccionada a " + organizacion.getNombre()
-                + (this.observacionTecnica != null && !this.observacionTecnica.isBlank() ? ". Nota técnica: " + this.observacionTecnica : "");
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeDireccionada(
+                this.descripcion,
+                organizacion.getNombre(),
+                this.observacionTecnica
+        );
 
         registrarPasoHistorial(motivoHistorial, EstadoAlerta.DIRECCIONADA, lider);
+    }
+
+    public void modificarDireccionamiento(
+            CategoriaAlerta nuevaCategoria,
+            PrioridadAlerta nuevaPrioridad,
+            Usuario nuevaOrganizacion,
+            Usuario lider,
+            String nuevaObservacionTecnica
+    ) {
+        if (this.estado != EstadoAlerta.DIRECCIONADA) {
+            throw new redalerta_backend.common.exception.BadRequestException("Solo se puede modificar el direccionamiento de alertas en estado DIRECCIONADA");
+        }
+        this.categoria = nuevaCategoria;
+        this.prioridad = nuevaPrioridad;
+        this.organizacionAsignada = nuevaOrganizacion;
+        this.observacionTecnica = nuevaObservacionTecnica != null ? nuevaObservacionTecnica.trim() : null;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeDireccionamientoModificado(
+                this.descripcion,
+                nuevaOrganizacion.getNombre(),
+                this.observacionTecnica
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.DIRECCIONADA, lider);
+    }
+
+    public void cancelarDireccionamiento(String motivo, Usuario lider) {
+        if (this.estado != EstadoAlerta.DIRECCIONADA) {
+            throw new redalerta_backend.common.exception.BadRequestException("Solo se puede cancelar el direccionamiento de alertas en estado DIRECCIONADA");
+        }
+        if (motivo == null || motivo.isBlank()) {
+            throw new redalerta_backend.common.exception.BadRequestException("El motivo de cancelación no puede estar vacío");
+        }
+
+        this.estado = EstadoAlerta.PENDIENTE_REVISION;
+        this.organizacionAsignada = null;
+        this.liderComunitario = null;
+        this.categoria = null;
+        this.prioridad = null;
+        this.observacionTecnica = null;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeDireccionamientoCancelado(
+                this.descripcion,
+                motivo
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.PENDIENTE_REVISION, lider);
     }
 }

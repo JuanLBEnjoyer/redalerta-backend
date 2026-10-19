@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Embeddable
 public record RegistroHistorial(
-        @Column(name = "motivo_o_accion", nullable = false, length = 500)
+        @Column(name = "motivo_o_accion", nullable = false, length = 1500)
         String motivoOAccion,
 
         @Column(name = "fecha_accion", nullable = false)
