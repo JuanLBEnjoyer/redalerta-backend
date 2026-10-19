@@ -1,0 +1,7 @@
+target/
+.git/
+.vscode/
+.agents/
+docs/
+*.md
+!README.md
