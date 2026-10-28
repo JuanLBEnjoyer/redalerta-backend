@@ -22,8 +22,8 @@ Guia tecnica para el equipo de desarrollo de RedAlerta. Este documento establece
 |---|---|---|
 | JDK (Java Development Kit) | Java 25 (o Java 21 LTS minimo) | Entorno de ejecucion y compilacion del backend |
 | Apache Maven | 3.9+ (o ejecutable ./mvnw incluido) | Gestion de dependencias y empaquetado del proyecto |
-| Oracle Database | 23c Free o 21c/18c XE | Motor de base de datos relacional (PDB FREEPDB1) |
-| Cliente de Base de Datos | DBeaver, Oracle SQL Developer | Administracion y consulta de esquemas de datos |
+| PostgreSQL | 16+ | Motor de base de datos relacional |
+| Cliente de Base de Datos | DBeaver, pgAdmin 4 | Administracion y consulta de esquemas de datos |
 | Git | 2.30+ | Sistema de control de versiones distribuido |
 
 ---
@@ -52,19 +52,13 @@ git checkout develop
 git pull origin develop
 ```
 
-### 3.2 Configuracion del Usuario en Oracle Database
+### 3.2 Configuracion de la Base de Datos en PostgreSQL
 
-Conectese a la base de datos como administrador (`SYS` o `SYSTEM`) en la instancia PDB (`FREEPDB1`) y ejecute:
+Conectese a PostgreSQL con el usuario administrador (`postgres`) y ejecute:
 
 ```sql
--- Creacion del usuario de aplicacion
-CREATE USER tu_usuario IDENTIFIED BY tu_contrasena;
-
--- Asignacion de privilegios basicos
-GRANT CONNECT, RESOURCE TO tu_usuario;
-
--- Asignacion de cuota en el tablespace USERS (Obligatorio para Hibernate)
-ALTER USER tu_usuario QUOTA UNLIMITED ON USERS;
+-- Creacion de la base de datos del proyecto
+CREATE DATABASE redalerta_db;
 ```
 
 ### 3.3 Gestion de Propiedades y Secretos (Twelve-Factor App)
@@ -82,14 +76,13 @@ El archivo `application.properties` se encuentra protegido e ignorado en `.gitig
    server.port=8080
    server.servlet.context-path=${SERVER_CONTEXT_PATH:/api/v1}
 
-   # Conexion a Oracle DB
-   spring.datasource.url=${ORACLE_URL:jdbc:oracle:thin:@localhost:1521/FREEPDB1}
-   spring.datasource.username=${ORACLE_USERNAME:tu_usuario}
-   spring.datasource.password=${ORACLE_PASSWORD:tu_contrasena}
-   spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+   # Conexion a PostgreSQL
+   spring.datasource.url=${SPRING_DATASOURCE_URL:${DB_URL:jdbc:postgresql://localhost:5432/redalerta_db}}
+   spring.datasource.username=${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
+   spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres}}
+   spring.datasource.driver-class-name=org.postgresql.Driver
 
    # Dialecto Hibernate
-   spring.jpa.database-platform=org.hibernate.dialect.OracleDialect
    spring.jpa.hibernate.ddl-auto=update
    spring.jpa.show-sql=true
 
@@ -153,7 +146,7 @@ sh ./mvnw clean test
 
 ### Reglas para Pruebas Unitarias:
 1. **Aislamiento total:** Las pruebas unitarias deben ejecutarse de forma independiente, utilizando mocks (Mockito) para repositorios, servicios externos y codificadores.
-2. **Cero dependencias externas en tests unitarios:** Ningun test unitario debe depender de conexiones activas a Oracle DB, servicios AWS o redes externas.
+2. **Cero dependencias externas en tests unitarios:** Ningun test unitario debe depender de conexiones activas a PostgreSQL, servicios AWS o redes externas.
 3. **Claves mock:** Para componentes criptograficos como `JwtServiceTest`, utilice claves dummy claramente identificadas para pruebas (`test_mock_secret_key...`).
 
 ---

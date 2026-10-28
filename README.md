@@ -15,7 +15,7 @@ Servicio central del ecosistema de seguridad comunitaria RedAlerta. Este backend
 * **Seguridad y Criptografia:**
   * JJWT (io.jsonwebtoken 0.12.6) para emision, firma HMAC-SHA256 y validacion de tokens JWT
   * BCryptPasswordEncoder para almacenamiento seguro de credenciales
-* **Base de Datos:** Oracle Database (PDB FREEPDB1 / dialecto OracleDialect)
+* **Base de Datos:** PostgreSQL 16+ (dialecto PostgreSQLDialect)
 * **Testing:**
   * JUnit 5 (Jupiter Platform)
   * Mockito para pruebas unitarias aisladas
@@ -42,8 +42,8 @@ El proyecto esta construido bajo una arquitectura modular orientada al dominio (
 ### Requisitos Previos
 
 1. Java Development Kit (JDK) 25 o compatible instalado.
-2. Oracle Database (23c Free, 21c o 18c XE) en ejecucion local o en contenedor Docker.
-3. Usuario Oracle con permisos y cuota de almacenamiento asignada en el tablespace `USERS`.
+2. PostgreSQL 16+ en ejecucion local o en contenedor Docker.
+3. Base de datos `redalerta_db` creada para el proyecto.
 
 ### Configuracion del Entorno
 
@@ -60,7 +60,7 @@ El proyecto esta construido bajo una arquitectura modular orientada al dominio (
 
    > Nota de seguridad: El archivo `application.properties` se encuentra excluido del control de versiones (.gitignore) para evitar la filtracion de credenciales y claves secretas al repositorio publico.
 
-3. Configurar las variables requeridas en `application.properties` o mediante variables de entorno del sistema (`JWT_SECRET`, `ORACLE_USERNAME`, `ORACLE_PASSWORD`).
+3. Configurar las variables requeridas en `application.properties` o mediante variables de entorno del sistema (`JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`).
 
 ### Compilacion y Ejecucion de Pruebas
 
