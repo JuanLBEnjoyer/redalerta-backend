@@ -5,8 +5,10 @@ target/
 !**/src/test/**/target/
 !mvnw
 !mvnw.cmd
+docs/
 
 # Local properties and secrets
+src/main/resources/application.properties
 src/main/resources/application-local.properties
 .env
 *.pem

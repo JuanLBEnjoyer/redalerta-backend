@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 @Data
@@ -27,5 +28,9 @@ public class ErrorResponse {
                 .message(message)
                 .errors(errors)
                 .build();
+    }
+
+    public static ErrorResponse of(String message) {
+        return of(message, Collections.emptyList());
     }
 }

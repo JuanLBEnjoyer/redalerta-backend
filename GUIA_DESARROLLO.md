@@ -1,205 +1,206 @@
-# Guía de Desarrollo y Onboarding - RedAlerta Backend
+# Guia de Desarrollo y Onboarding - RedAlerta Backend
 
-¡Bienvenido al equipo de desarrollo de **RedAlerta**! Esta guía detalla los requisitos, la configuración del entorno, la arquitectura y las reglas de colaboración para trabajar en el backend del proyecto de forma óptima y estandarizada.
-
-##  Tabla de Contenidos
-
-1. [Requisitos Previos y Herramientas](#1-requisitos-previos-y-herramientas-necesarias)
-2. [Contexto y Arquitectura General](#2-contexto-y-arquitectura-general)
-3. [Configuración del Entorno Local](#3-configuración-del-entorno-local-paso-a-paso)
-4. [Estrategia de Ramas (GitFlow)](#4-estrategia-de-ramas-gitflow-y-reglas-de-oro)
-5. [Convención de Commits](#5-convención-de-commits-conventional-commits)
-6. [Flujo de Trabajo Diario](#6-flujo-de-trabajo-diario-paso-a-paso)
+Guia tecnica para el equipo de desarrollo de RedAlerta. Este documento establece los estandares de ingenieria, el flujo de trabajo con GitFlow, las convenciones de confirmacion de cambios y los procedimientos de configuracion local.
 
 ---
 
-## 1. Requisitos Previos y Herramientas Necesarias
+## Tabla de Contenidos
 
-Antes de comenzar, asegúrate de tener instaladas las siguientes herramientas en tu equipo:
+1. [Requisitos Previos y Herramientas](#1-requisitos-previos-y-herramientas)
+2. [Arquitectura y Principios de Diseno](#2-arquitectura-y-principios-de-diseno)
+3. [Configuracion del Entorno Local](#3-configuracion-del-entorno-local)
+4. [Estrategia de Ramas (GitFlow)](#4-estrategia-de-ramas-gitflow)
+5. [Convencion de Commits (Conventional Commits)](#5-convencion-de-commits-conventional-commits)
+6. [Politica de Calidad y Pruebas Unitarias](#6-politica-de-calidad-y-pruebas-unitarias)
+7. [Ciclo de Desarrollo Paso a Paso](#7-ciclo-de-desarrollo-paso-a-paso)
 
-| Herramienta | Versión Recomendada | Propósito |
+---
+
+## 1. Requisitos Previos y Herramientas
+
+| Herramienta | Version Recomendada | Proposito |
 |---|---|---|
-| **JDK (Java Development Kit)** | Java 17 (LTS) o Java 25 | Lenguaje de programación del backend. |
-| **Apache Maven** | 3.8+ (o el ejecutable `./mvnw` incluido) | Gestión de dependencias y construcción del proyecto. |
-| **IDE de Desarrollo** | Antigravity, IntelliJ IDEA, VS Code o STS | Entorno de desarrollo para Java y Spring Boot. |
-| **Oracle Database** | 23c Free o 18c/21c XE | Motor de base de datos relacional (instalación local o Docker). |
-| **Gestor de Base de Datos** | Oracle SQL Developer o DBeaver | Cliente gráfico para inspeccionar esquemas y ejecutar scripts SQL. |
-| **Git** | 2.x+ | Control de versiones. |
+| JDK (Java Development Kit) | Java 25 (o Java 21 LTS minimo) | Entorno de ejecucion y compilacion del backend |
+| Apache Maven | 3.9+ (o ejecutable ./mvnw incluido) | Gestion de dependencias y empaquetado del proyecto |
+| PostgreSQL | 16+ | Motor de base de datos relacional |
+| Cliente de Base de Datos | DBeaver, pgAdmin 4 | Administracion y consulta de esquemas de datos |
+| Git | 2.30+ | Sistema de control de versiones distribuido |
 
 ---
 
-## 2. Contexto y Arquitectura General
+## 2. Arquitectura y Principios de Diseno
 
-- **Framework principal:** Spring Boot 4.4.1 (Spring Web, Spring Security, Spring Data JPA, Validation).
-- **Multiplataforma:** sirve a la **aplicación móvil** (Android - Java) y al **panel web de administración** mediante una API REST unificada.
-- **Context path base:** todas las URLs de la API responden bajo el prefijo `/api/v1` (`http://localhost:8080/api/v1/...`).
-- **Autenticación:** orientada a **JWT (stateless)**.
-
-> **Nota:** Al iniciar la aplicación verás un login por defecto en el navegador generado por Spring Security. Esto es completamente normal en esta fase.
+* **Documento Funcional y Reglas de Negocio:** Antes de implementar o modificar funcionalidades, revise el documento de [Diseno Funcional y Modelo de Negocio](DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md) para entender el flujo de aprobaciones, roles y ciclo de vida de alertas.
+* **Arquitectura Monolitica Modular:** Organizacion por contextos delimitados (DDD) dentro del paquete `modules/` (`auth`, `usuario`, `alerta`).
+* **Value Objects Inmutables:** Los atributos criticos de negocio (`Email`, `Documento`, `Rol`, `Genero`, `Ubicacion`, `UbicacionAlerta`) se implementan como `record` de Java con validaciones estrictas en el constructor compacto.
+* **Seguridad Stateless con JWT:** Spring Security configurado sin estado de sesion (`SessionCreationPolicy.STATELESS`). Cada solicitud autenticada debe incluir el encabezado HTTP:
+  ```http
+  Authorization: Bearer <token_jwt>
+  ```
+* **Manejo Centralizado de Excepciones:** Todas las excepciones de negocio y de validacion son interceptadas por `GlobalExceptionHandler` (`@RestControllerAdvice`), garantizando que ninguna traza de error interna se exponga al cliente.
 
 ---
 
-## 3. Configuración del Entorno Local Paso a Paso
+## 3. Configuracion del Entorno Local
 
-### Paso 3.1: Clonar el repositorio e ir a la rama de desarrollo
+### 3.1 Clonacion y Rama Base
 
 ```bash
-# 1. Clonar el repositorio
-git clone https://github.com/TU_ORGANIZACION/redalerta-backend.git
+git clone https://github.com/JuanLBEnjoyer/redalerta-backend.git
 cd redalerta-backend
-
-# 2. Posicionarse en la rama develop
 git checkout develop
 git pull origin develop
 ```
 
-### Paso 3.2: Configurar el usuario y permisos en Oracle DB
+### 3.2 Configuracion de la Base de Datos en PostgreSQL
 
-Abre tu gestor de base de datos (SQL Developer) conectado como administrador (`system_pdb` o `system`) en el PDB `FREEPDB1` (o `XEPDB1`) y ejecuta:
+Conectese a PostgreSQL con el usuario administrador (`postgres`) y ejecute:
 
 ```sql
--- 1. Crear el usuario para el proyecto (si no existe)
-CREATE USER tu_usuario_aqui IDENTIFIED BY tu_contrasena_aqui;
-
--- 2. Otorgar roles básicos de conexión y creación de objetos
-GRANT CONNECT, RESOURCE TO tu_usuario_aqui;
-
--- 3. CRÍTICO: Otorgar cuota ilimitada de almacenamiento (evita el error ORA-01950 en Hibernate)
-ALTER USER tu_usuario_aqui QUOTA UNLIMITED ON USERS;
+-- Creacion de la base de datos del proyecto
+CREATE DATABASE redalerta_db;
 ```
 
-### Paso 3.3: Configurar las variables de entorno (`application.properties`)
+### 3.3 Gestion de Propiedades y Secretos (Twelve-Factor App)
 
-El archivo `src/main/resources/application.properties` utiliza la sintaxis de reemplazo `${VARIABLE:valor_por_defecto}`. Puedes guiarte con la plantilla pública `application-example.properties` o configurar las variables de entorno directamente en tu IDE.
+El archivo `application.properties` se encuentra protegido e ignorado en `.gitignore` para prevenir fugas de secretos criptograficos o contraseñas personales.
 
-**Propiedades base:**
+1. Genere su archivo de configuracion local copiando la plantilla:
+   ```bash
+   cp src/main/resources/application-example.properties src/main/resources/application.properties
+   ```
 
-```properties
-# Puerto y Context Path
-server.port=${PORT:8080}
-server.servlet.context-path=${SERVER_CONTEXT_PATH:/api/v1}
+2. Ajuste las variables de conexion y seguridad en su `application.properties`:
+   ```properties
+   # Puerto y Context Path
+   server.port=8080
+   server.servlet.context-path=${SERVER_CONTEXT_PATH:/api/v1}
 
-# Conexión a Oracle DB (¡Atención a la sintaxis del separador /!)
-spring.datasource.url=${DB_URL:jdbc:oracle:thin:@localhost:1521/FREEPDB1}
-spring.datasource.username=${DB_USERNAME:tu_usuario_aqui}
-spring.datasource.password=${DB_PASSWORD:tu_contrasena_aqui}
-spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+   # Conexion a PostgreSQL
+   spring.datasource.url=${SPRING_DATASOURCE_URL:${DB_URL:jdbc:postgresql://localhost:5432/redalerta_db}}
+   spring.datasource.username=${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
+   spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres}}
+   spring.datasource.driver-class-name=org.postgresql.Driver
 
-# Configuración JPA / Dialecto
-spring.jpa.database-platform=org.hibernate.dialect.OracleDialect
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+   # Dialecto Hibernate
+   spring.jpa.hibernate.ddl-auto=update
+   spring.jpa.show-sql=true
 
-# Seguridad (JWT)
-jwt.secret=${JWT_SECRET:clave_secreta_desarrollo_al_menos_256_bits_1234567890}
-jwt.expiration-ms=${JWT_EXPIRATION:86400000}
-```
-
-> **Sintaxis crítica de la URL Oracle JDBC**
->
-> Para nombre de servicio / PDB (`FREEPDB1` / `XEPDB1`) **debes usar barra diagonal `/`**:
->
-> ```
-> jdbc:oracle:thin:@localhost:1521/FREEPDB1
-> ```
->
-> Usar dos puntos (`:FREEPDB1`) causará el error **ORA-12505**.
+   # Clave secreta para firma JWT (minimo 256 bits)
+   jwt.secret=${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+   jwt.expiration-ms=${JWT_EXPIRATION_MS:86400000}
+   ```
 
 ---
 
-## 4. Estrategia de Ramas (GitFlow) y Reglas de Oro
+## 4. Estrategia de Ramas (GitFlow)
 
-Para mantener la integridad del código aplicamos **GitFlow estricto**.
+El equipo aplica el modelo GitFlow para mantener un historial trazable y estable.
 
-### Ramas permanentes
+### Ramas Principales
 
-| Rama | Descripción |
-|---|---|
-| `main` | Código oficial de entregas estables. Nadie programa ni sube cambios directamente aquí. |
-| `develop` | Rama base de integración continua del equipo. Tampoco se hacen *pushes* directos. |
-
-### Ramas temporales
-
-| Patrón | Uso |
-|---|---|
-| `feature/[nombre-tarea]` | Construir nuevas funcionalidades. |
-| `fix/[nombre-error]` | Corregir errores detectados. |
-| `chore/[nombre-config]` | Tareas de mantenimiento o archivos de configuración. |
-
-### Reglas estrictas de protección de ramas (Branch Protection)
-
-1. **Pushes directos prohibidos:** intentar un `git push origin develop` o `main` será rechazado por GitHub.
-2. **Pull Request (PR) obligatorio:** todos los cambios entran exclusivamente mediante un PR hacia `develop`.
-3. **Aprobación de código (Peer Review):** todo PR requiere al menos **1 aprobación** de un compañero antes de fusionarse.
-4. **Limpieza:** una vez fusionado el PR, la rama temporal debe eliminarse en GitHub y en local.
-
----
-
-## 5. Convención de Commits (Conventional Commits)
-
-Todos los mensajes de commit deben seguir la estructura:
-
-```
-tipo: descripción corta en minúsculas
-```
-
-| Prefijo | Uso | Ejemplo |
+| Rama | Nivel de Proteccion | Descripcion |
 |---|---|---|
-| `feat:` | Nueva característica o endpoint | `feat: add REST endpoint for alert creation` |
-| `fix:` | Corrección de un fallo o excepción | `fix: resolve ORA-12505 database connection syntax` |
-| `docs:` | Cambios en documentación o README | `docs: update setup guide with Oracle DB instructions` |
-| `style:` | Formato, espacios o comentarios | `style: fix indentations in AlertaService` |
-| `refactor:` | Reestructuración de código sin alterar la lógica | `refactor: optimize user query logic in repository` |
-| `chore:` | Mantenimiento, `.gitignore` o dependencias | `chore: update dependencies in pom.xml` |
+| `main` | Protegida contra push directo | Codigo validado para despliegue en produccion |
+| `develop` | Protegida contra push directo | Rama de integracion para el desarrollo continuo del equipo |
 
-> **Regla de atomicidad:** haz commits separados por cada tipo de trabajo. No mezcles un `feat` con un `fix` o un `refactor` en el mismo commit.
+### Ramas de Soporte / Trabajo
+
+| Prefijo | Proposito | Rama Base | Rama Destino |
+|---|---|---|---|
+| `feature/` | Desarrollo de nuevas caracteristicas o endpoints | `develop` | `develop` |
+| `fix/` | Correccion de errores en `develop` | `develop` | `develop` |
+| `test/` | Implementacion o refactorizacion de pruebas unitarias | `develop` | `develop` |
+| `refactor/` | Mejoras estructurales sin alterar comportamiento externo | `develop` | `develop` |
+| `chore/` | Mantenimiento de dependencias, configuraciones o scripts | `develop` | `develop` |
 
 ---
 
-##  6. Flujo de Trabajo Diario (Paso a Paso)
+## 5. Convencion de Commits (Conventional Commits)
 
-Cuando te asignen una tarea, sigue este ciclo exacto:
+Cada confirmacion en Git debe expresar de forma univoca el proposito del cambio, utilizando el formato:
 
-### 1. Actualizar tu rama `develop` local
+```text
+tipo(alcance): descripcion breve en minusculas y modo imperativo
+```
+
+| Tipo | Descripcion | Ejemplo |
+|---|---|---|
+| `feat` | Nueva funcionalidad para el usuario o API | `feat(auth): implementar endpoint de inicio de sesion` |
+| `fix` | Correccion de un defecto o fallo detectado | `fix(jwt): corregir validacion de expiracion en tokens expirados` |
+| `test` | Incorporacion o modificacion de pruebas unitarias/integracion | `test(auth): agregar pruebas unitarias para servicio de login` |
+| `refactor` | Reestructuracion interna de codigo sin cambiar comportamiento | `refactor(usuario): migrar atributos de documento a value object` |
+| `docs` | Modificaciones exclusivas en documentacion | `docs(readme): actualizar requisitos de instalacion y endpoints` |
+| `chore` | Tareas de mantenimiento, dependencias o configuraciones | `chore(security): proteger archivo application.properties en gitignore` |
+| `style` | Cambios de formato, espaciado o convenciones de estilo | `style(controller): ordenar importaciones y corregir identacion` |
+
+---
+
+## 6. Politica de Calidad y Pruebas Unitarias
+
+Antes de enviar cualquier Pull Request, es obligatorio ejecutar la suite completa de pruebas unitarias y verificar la compilacion limpia:
+
+```bash
+sh ./mvnw clean test
+```
+
+### Reglas para Pruebas Unitarias:
+1. **Aislamiento total:** Las pruebas unitarias deben ejecutarse de forma independiente, utilizando mocks (Mockito) para repositorios, servicios externos y codificadores.
+2. **Cero dependencias externas en tests unitarios:** Ningun test unitario debe depender de conexiones activas a PostgreSQL, servicios AWS o redes externas.
+3. **Claves mock:** Para componentes criptograficos como `JwtServiceTest`, utilice claves dummy claramente identificadas para pruebas (`test_mock_secret_key...`).
+
+---
+
+## 7. Ciclo de Desarrollo Paso a Paso
+
+### Paso 1: Actualizar la rama base
 
 ```bash
 git checkout develop
 git pull origin develop
 ```
 
-### 2. Crear tu rama de trabajo
+### Paso 2: Crear la rama de trabajo
 
 ```bash
-git checkout -b feature/registro-alertas
+git checkout -b feature/nombre-de-la-tarea
 ```
 
-### 3. Programar y realizar commits atómicos
+### Paso 3: Desarrollar con confirmaciones atomicas
 
 ```bash
-git add .
-git commit -m "feat: create alert entity and JPA repository"
+# Cambios de codigo de produccion
+git add src/main/
+git commit -m "feat(auth): implementar emision de token jwt"
+
+# Pruebas asociadas
+git add src/test/
+git commit -m "test(auth): agregar pruebas unitarias para emision de token"
 ```
 
-### 4. Subir tu rama a GitHub
+### Paso 4: Validar compilacion y pruebas locales
 
 ```bash
-git push -u origin feature/registro-alertas
+sh ./mvnw clean test
 ```
 
-### 5. Abrir Pull Request en GitHub
+### Paso 5: Publicar la rama en GitHub
 
-1. Ingresa al repositorio en GitHub y haz clic en **Compare & pull request**.
-2. **Verifica la dirección:** `base: develop` ← `compare: feature/registro-alertas`.
-3. Escribe una descripción breve y solicita la revisión de un compañero.
+```bash
+git push -u origin feature/nombre-de-la-tarea
+```
 
-### 6. Aprobación y fusión (Merge)
+### Paso 6: Crear Pull Request
 
-Un compañero revisa la pestaña **Files changed**, aprueba el PR y presiona **Merge pull request**. Luego se borra la rama en GitHub con el botón **Delete branch**.
+1. Abrir GitHub y seleccionar la rama publicada.
+2. Comprobar que la direccion sea: `base: develop` <- `compare: feature/nombre-de-la-tarea`.
+3. Completar la descripcion del cambio y solicitar revision de codigo (Code Review).
+4. Tras la aprobacion, fusionar mediante `Merge pull request`.
 
-### 7. Limpieza local en tu máquina
+### Paso 7: Limpieza local
 
 ```bash
 git checkout develop
 git pull origin develop
-git branch -d feature/registro-alertas
+git branch -d feature/nombre-de-la-tarea
 ```
