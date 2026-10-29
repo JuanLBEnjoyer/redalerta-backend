@@ -4,8 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import redalerta_backend.common.exception.BadRequestException;
 
-import redalerta_backend.modules.catalogo.domain.CatalogoGeografico;
-
 /**
  * Value Object inmutable que representa la ubicacion territorial y de residencia de un usuario.
  * Aplica principios de Domain-Driven Design (DDD).
@@ -31,8 +29,8 @@ public record Ubicacion(
         if (direccionResidencia == null || direccionResidencia.isBlank()) {
             throw new BadRequestException("La direccion de residencia es obligatoria");
         }
-        departamento = CatalogoGeografico.canonicalizarDepartamento(departamento);
-        municipio = CatalogoGeografico.canonicalizarMunicipio(departamento, municipio);
+        departamento = departamento.trim();
+        municipio = municipio.trim();
         direccionResidencia = direccionResidencia.trim();
     }
 }

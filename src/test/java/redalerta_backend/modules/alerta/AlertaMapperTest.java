@@ -29,7 +29,7 @@ class AlertaMapperTest {
                 .id(1L)
                 .nombre("Juan Perez")
                 .build();
-        ubicacion = new UbicacionAlerta("Quindio", "Armenia", "Calle 10 # 15-20");
+        ubicacion = new UbicacionAlerta("Quindio", "Armenia", "Calle 10 # 15-20", 4.5338, -75.6811, 1480.0);
     }
 
     @Test
@@ -109,5 +109,47 @@ class AlertaMapperTest {
         assertNotNull(dto);
         assertEquals(4, dto.getTotalEvidencias());
         assertEquals(4, dto.getEvidencias().size());
+        assertNotNull(dto.getUbicacion());
+        assertEquals(4.5338, dto.getUbicacion().getLatitud());
+        assertEquals(-75.6811, dto.getUbicacion().getLongitud());
+        assertEquals(1480.0, dto.getUbicacion().getAltitud());
+    }
+
+    @Test
+    @DisplayName("Debe mapear UbicacionAlerta a UbicacionAlertaDto con coordenadas geodesicas")
+    void toUbicacionAlertaDtoMapeaCoordenadasGeodesicas() {
+        UbicacionAlerta vo = new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.54, -75.67, 1500.0);
+        redalerta_backend.modules.alerta.dto.UbicacionAlertaDto dto = mapper.toUbicacionAlertaDto(vo);
+
+        assertNotNull(dto);
+        assertEquals("Quindio", dto.getDepartamento());
+        assertEquals("Armenia", dto.getMunicipio());
+        assertEquals("Calle 10", dto.getDireccionDetallada());
+        assertEquals(4.54, dto.getLatitud());
+        assertEquals(-75.67, dto.getLongitud());
+        assertEquals(1500.0, dto.getAltitud());
+    }
+
+    @Test
+    @DisplayName("Debe mapear UbicacionAlertaDto a UbicacionAlerta con coordenadas completas")
+    void toUbicacionAlertaMapeaCoordenadasCompletas() {
+        redalerta_backend.modules.alerta.dto.UbicacionAlertaDto dto = redalerta_backend.modules.alerta.dto.UbicacionAlertaDto.builder()
+                .departamento("Quindio")
+                .municipio("Armenia")
+                .direccionDetallada("Plaza Bolívar")
+                .latitud(4.533)
+                .longitud(-75.681)
+                .altitud(1480.0)
+                .build();
+
+        UbicacionAlerta vo = mapper.toUbicacionAlerta(dto);
+
+        assertNotNull(vo);
+        assertEquals("Quindio", vo.departamento());
+        assertEquals("Armenia", vo.municipio());
+        assertEquals("Plaza Bolívar", vo.direccionDetallada());
+        assertEquals(4.533, vo.latitud());
+        assertEquals(-75.681, vo.longitud());
+        assertEquals(1480.0, vo.altitud());
     }
 }
