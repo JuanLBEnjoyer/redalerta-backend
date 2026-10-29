@@ -41,7 +41,7 @@ class JwtServiceTest {
         assertEquals("juan@example.com", jwtService.extractUsername(token));
         assertEquals(1L, jwtService.extractUserId(token));
         assertEquals("ROLE_CIUDADANO", jwtService.extractRol(token));
-        assertEquals("Quindío", jwtService.extractDepartamento(token));
+        assertEquals("Quindio", jwtService.extractDepartamento(token));
         assertEquals("Armenia", jwtService.extractMunicipio(token));
         assertTrue(jwtService.isTokenValid(token));
     }

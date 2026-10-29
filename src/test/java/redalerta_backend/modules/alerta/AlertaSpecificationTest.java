@@ -83,7 +83,7 @@ class AlertaSpecificationTest {
         when(ubicacionPath.<String>get("municipio")).thenReturn(municipioPath);
         when(cb.lower(departamentoPath)).thenReturn(departamentoPath);
         when(cb.lower(municipioPath)).thenReturn(municipioPath);
-        when(cb.equal(departamentoPath, "quindío")).thenReturn(predicateMock);
+        when(cb.equal(departamentoPath, "quindio")).thenReturn(predicateMock);
         when(cb.equal(municipioPath, "armenia")).thenReturn(predicateMock);
 
         when(root.<EstadoAlerta>get("estado")).thenReturn(estadoPath);
@@ -94,7 +94,7 @@ class AlertaSpecificationTest {
         Predicate result = spec.toPredicate(root, query, cb);
 
         assertNotNull(result);
-        verify(cb).equal(departamentoPath, "quindío");
+        verify(cb).equal(departamentoPath, "quindio");
         verify(cb).equal(municipioPath, "armenia");
     }
 

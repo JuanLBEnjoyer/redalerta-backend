@@ -89,9 +89,12 @@ class AlertaServiceTest {
                                 .departamento("Quindio")
                                 .municipio("Armenia")
                                 .direccionDetallada("Carrera 14 # 10-20")
+                                .latitud(4.5338)
+                                .longitud(-75.6811)
+                                .altitud(1480.0)
                                 .build();
 
-                ubicacionVO = new UbicacionAlerta("Quindio", "Armenia", "Carrera 14 # 10-20");
+                ubicacionVO = new UbicacionAlerta("Quindio", "Armenia", "Carrera 14 # 10-20", 4.5338, -75.6811, 1480.0);
 
                 requestDto = CrearAlertaRequestDto.builder()
                                 .descripcion("Cierre temporal de via por derrumbe.")
@@ -399,9 +402,12 @@ class AlertaServiceTest {
                                 .departamento("Risaralda")
                                 .municipio("Pereira")
                                 .direccionDetallada("Carrera 7 # 20-30")
+                                .latitud(4.8133)
+                                .longitud(-75.6961)
+                                .altitud(1411.0)
                                 .build();
 
-                UbicacionAlerta nuevaUbicacionVO = new UbicacionAlerta("Risaralda", "Pereira", "Carrera 7 # 20-30");
+                UbicacionAlerta nuevaUbicacionVO = new UbicacionAlerta("Risaralda", "Pereira", "Carrera 7 # 20-30", 4.8133, -75.6961, 1411.0);
 
                 ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
                                 .descripcion("Descripcion actualizada del incidente")
@@ -860,7 +866,7 @@ class AlertaServiceTest {
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
                                 .descripcion("Incendio estructural en bodega comercial")
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar Calle 15"))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar Calle 15", 4.5400, -75.6700, 1480.0))
                                 .autor(usuarioCiudadano)
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
@@ -975,7 +981,7 @@ class AlertaServiceTest {
 
                 Alerta alertaArmenia = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar"))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar", 4.5400, -75.6700, 1480.0))
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
 
@@ -1018,7 +1024,7 @@ class AlertaServiceTest {
 
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10"))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
 
@@ -1062,7 +1068,7 @@ class AlertaServiceTest {
 
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10"))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
 
@@ -1097,7 +1103,7 @@ class AlertaServiceTest {
 
                 Alerta alertaYaDireccionada = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10"))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
                                 .estado(EstadoAlerta.DIRECCIONADA)
                                 .build();
 
@@ -1140,7 +1146,7 @@ class AlertaServiceTest {
 
                 when(usuarioRepository.findByEmail("lider.armenia@redalerta.gov.co")).thenReturn(Optional.of(lider));
                 when(usuarioRepository.findByRolAndUbicacionDepartamentoAndUbicacionMunicipioAndActivoTrue(
-                                eq(Rol.ROLE_ORGANIZACION), eq("Quindío"), eq("Armenia")))
+                                eq(Rol.ROLE_ORGANIZACION), eq("Quindio"), eq("Armenia")))
                                 .thenReturn(List.of(bomberos));
 
                 when(alertaMapper.toOrganizacionResponseDto(bomberos)).thenReturn(
@@ -1148,7 +1154,7 @@ class AlertaServiceTest {
                                                 .id(20L)
                                                 .nombre("Bomberos Armenia")
                                                 .email("bomberos.armenia@redalerta.gov.co")
-                                                .departamento("Quindío")
+                                                .departamento("Quindio")
                                                 .municipio("Armenia")
                                                 .build());
 
@@ -1258,7 +1264,7 @@ class AlertaServiceTest {
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
                                 .descripcion("Robo en establecimiento comercial")
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 14"))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 14", 4.5338, -75.6811, 1480.0))
                                 .autor(usuarioCiudadano)
                                 .estado(EstadoAlerta.DIRECCIONADA)
                                 .liderComunitario(lider)

@@ -135,6 +135,9 @@ public class AlertaMapper {
                 .departamento(ubicacion.departamento())
                 .municipio(ubicacion.municipio())
                 .direccionDetallada(ubicacion.direccionDetallada())
+                .latitud(ubicacion.latitud())
+                .longitud(ubicacion.longitud())
+                .altitud(ubicacion.altitud())
                 .build();
     }
 
@@ -146,7 +149,10 @@ public class AlertaMapper {
         return new UbicacionAlerta(
                 dto.getDepartamento(),
                 dto.getMunicipio(),
-                dto.getDireccionDetallada()
+                dto.getDireccionDetallada(),
+                dto.getLatitud(),
+                dto.getLongitud(),
+                dto.getAltitud()
         );
     }
 
