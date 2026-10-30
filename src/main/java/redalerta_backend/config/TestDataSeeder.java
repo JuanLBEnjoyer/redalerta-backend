@@ -14,7 +14,7 @@ import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 /**
  * Sembrador de datos iniciales para pruebas y desarrollo.
- * Registra lideres comunitarios y organizaciones de socorro/gubernamentales
+ * Registra líderes comunitarios y comités o brigadas comunitarias
  * con competencia territorial predefinida si no existen en la base de datos.
  */
 @Component
@@ -28,11 +28,11 @@ public class TestDataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         seedUsuarioSiNoExiste(
-                "lider.armenia@redalerta.gov.co",
+                "lider.armenia@redalerta.org",
                 "Líder Comunitario Armenia",
                 "1094900001",
                 TipoDeDocumento.CEDULA,
-                "Quindío",
+                "Quindio",
                 "Armenia",
                 "Barrio Granada Carrera 14",
                 "3101234567",
@@ -40,11 +40,11 @@ public class TestDataSeeder implements CommandLineRunner {
         );
 
         seedUsuarioSiNoExiste(
-                "lider.calarca@redalerta.gov.co",
+                "lider.calarca@redalerta.org",
                 "Líder Comunitario Calarcá",
                 "1094900002",
                 TipoDeDocumento.CEDULA,
-                "Quindío",
+                "Quindio",
                 "Calarcá",
                 "Plaza de Bolívar",
                 "3101234568",
@@ -52,49 +52,49 @@ public class TestDataSeeder implements CommandLineRunner {
         );
 
         seedUsuarioSiNoExiste(
-                "bomberos.armenia@redalerta.gov.co",
-                "Cuerpo Oficial de Bomberos Armenia",
+                "brigada.emergencias.armenia@redalerta.org",
+                "Brigada Comunitaria de Emergencias Armenia",
                 "890000001",
                 TipoDeDocumento.CEDULA,
-                "Quindío",
+                "Quindio",
                 "Armenia",
-                "Estación Central Calle 20",
+                "Sede Comunal Barrio Granada Calle 20",
                 "3109990001",
                 Rol.ROLE_ORGANIZACION
         );
 
         seedUsuarioSiNoExiste(
-                "policia.armenia@redalerta.gov.co",
-                "Policía Nacional Distrito Armenia",
+                "comite.salud.armenia@redalerta.org",
+                "Comité Comunitario de Salud y Primeros Auxilios",
                 "890000002",
                 TipoDeDocumento.CEDULA,
-                "Quindío",
+                "Quindio",
                 "Armenia",
-                "Comando Central Avenida Centenario",
+                "Caseta Comunal Manuela Beltrán",
                 "3109990002",
                 Rol.ROLE_ORGANIZACION
         );
 
         seedUsuarioSiNoExiste(
-                "cruzroja.quindio@redalerta.gov.co",
-                "Cruz Roja Colombiana Seccional Quindío",
+                "red.humanitaria.armenia@redalerta.org",
+                "Comité Comunitario de Solidaridad y Apoyo Humanitario",
                 "890000003",
                 TipoDeDocumento.CEDULA,
-                "Quindío",
+                "Quindio",
                 "Armenia",
-                "Avenida Bolívar # 10 Norte",
+                "Centro Comunitario La Fachada",
                 "3109990003",
                 Rol.ROLE_ORGANIZACION
         );
 
         seedUsuarioSiNoExiste(
-                "epa.armenia@redalerta.gov.co",
-                "Empresas Públicas de Armenia E.S.P.",
+                "comite.convivencia.armenia@redalerta.org",
+                "Comité Barrial de Convivencia y Prevención",
                 "890000004",
                 TipoDeDocumento.CEDULA,
-                "Quindío",
+                "Quindio",
                 "Armenia",
-                "Centro Administrativo Municipal CAM",
+                "Casa de la Cultura Comuna 2",
                 "3109990004",
                 Rol.ROLE_ORGANIZACION
         );
