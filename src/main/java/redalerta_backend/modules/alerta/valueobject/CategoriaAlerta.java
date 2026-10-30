@@ -2,8 +2,8 @@ package redalerta_backend.modules.alerta.valueobject;
 
 /**
  * Representa la tipologia o clasificacion tematica de una alerta comunitaria.
- * Permite a los lideres y entidades categorizar y direccionar la incidencia hacia
- * la organizacion idonea (ej. Bomberos, Policia, Cruz Roja, Empresas de Servicios Publicos).
+ * Permite a los lideres comunitarios categorizar y canalizar el incidente hacia
+ * el comite o brigada comunitaria idonea (ej. Brigada de Emergencias, Comite de Salud, Comite de Convivencia).
  */
 public enum CategoriaAlerta {
     DESASTRE_NATURAL,

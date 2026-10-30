@@ -22,7 +22,7 @@ public class CancelarDireccionamientoRequestDto {
     @Size(min = 10, max = 500, message = "El motivo de cancelacion debe tener entre 10 y 500 caracteres")
     @Schema(
             description = "Justificacion fundamentada del motivo por el cual se revoca el direccionamiento",
-            example = "Se direcciono inicialmente a Bomberos por error de digitacion, corresponde atencion de Policia Nacional"
+            example = "Se direcciono inicialmente a la Brigada de Emergencias por error de digitacion, corresponde atencion del Comite de Convivencia"
     )
     private String motivo;
 }

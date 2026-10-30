@@ -7,23 +7,23 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO que expone la informacion de contacto e identificacion de una organizacion
- * u organismo de socorro elegible para la recepcion de alertas comunitarias.
+ * DTO que expone la informacion de contacto e identificacion de un comite o brigada
+ * comunitaria elegible para la atencion y gestion de alertas.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Datos de contacto de una organizacion elegible para atencion de alertas")
+@Schema(description = "Datos de contacto de un comite o brigada comunitaria elegible para atencion de alertas")
 public class OrganizacionResponseDto {
 
-    @Schema(description = "Identificador unico de la entidad u organizacion", example = "5")
+    @Schema(description = "Identificador unico del comite o brigada comunitaria", example = "5")
     private Long id;
 
-    @Schema(description = "Nombre oficial o razon social de la entidad", example = "Cuerpo Oficial de Bomberos de Armenia")
+    @Schema(description = "Nombre oficial o denominacion del comite comunitario", example = "Brigada Comunitaria de Emergencias Armenia")
     private String nombre;
 
-    @Schema(description = "Correo electronico institucional", example = "bomberos.armenia@redalerta.gov.co")
+    @Schema(description = "Correo electronico de contacto del comite", example = "brigada.emergencias.armenia@redalerta.org")
     private String email;
 
     @Schema(description = "Telefono o linea de emergencias", example = "3101234567")

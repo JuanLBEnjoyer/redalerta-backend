@@ -62,10 +62,10 @@ public class AlertaResponseDto {
     @Schema(description = "Nombre del lider comunitario responsable", example = "Carlos Ramirez")
     private String liderNombre;
 
-    @Schema(description = "Identificador de la organizacion o entidad asignada", example = "15")
+    @Schema(description = "Identificador del comite o brigada comunitaria asignada", example = "15")
     private Long organizacionId;
 
-    @Schema(description = "Nombre de la entidad u organizacion asignada", example = "Cuerpo Oficial de Bomberos de Armenia")
+    @Schema(description = "Nombre del comite o brigada comunitaria asignada", example = "Brigada Comunitaria de Emergencias Armenia")
     private String organizacionNombre;
 
     @Schema(description = "Observacion o dictamen tecnico del lider comunitario", example = "Incendio forestal activo con amenaza a zona residencial.")

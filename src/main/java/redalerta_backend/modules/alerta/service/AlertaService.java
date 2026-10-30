@@ -91,10 +91,10 @@ public interface AlertaService {
             org.springframework.web.multipart.MultipartFile archivo, String emailUsuario);
 
     /**
-     * Consulta las organizaciones de socorro o gubernamentales elegibles en la jurisdiccion del lider.
+     * Consulta los comités o brigadas comunitarias elegibles en la jurisdicción del líder.
      *
-     * @param emailLider Correo del lider comunitario autenticado.
-     * @return Lista de organizaciones activas en la jurisdiccion territorial.
+     * @param emailLider Correo del líder comunitario autenticado.
+     * @return Lista de comités comunitarios activos en la jurisdicción territorial.
      */
     java.util.List<redalerta_backend.modules.alerta.dto.OrganizacionResponseDto> listarOrganizacionesElegibles(String emailLider);
 
@@ -160,5 +160,50 @@ public interface AlertaService {
             Long alertaId,
             redalerta_backend.modules.alerta.dto.CancelarDireccionamientoRequestDto request,
             String emailLider
+    );
+
+    /**
+     * Inicia la gestion operativa en terreno de una alerta comunitaria direccionada.
+     * Transiciona el estado de DIRECCIONADA a EN_GESTION.
+     *
+     * @param alertaId     Identificador unico de la alerta.
+     * @param request      Notas u observacion operativa inicial.
+     * @param emailUsuario Correo del usuario autenticado (comite asignado, lider o admin).
+     * @return Alerta en estado EN_GESTION con historial actualizado.
+     */
+    AlertaResponseDto iniciarGestion(
+            Long alertaId,
+            redalerta_backend.modules.alerta.dto.IniciarGestionRequestDto request,
+            String emailUsuario
+    );
+
+    /**
+     * Resuelve y cierra formalmente una alerta comunitaria que se encontraba en atencion.
+     * Exige un informe comunitario de resolucion y transiciona el estado a RESUELTA.
+     *
+     * @param alertaId     Identificador unico de la alerta.
+     * @param request      Informe comunitario detallado de cierre.
+     * @param emailUsuario Correo del usuario autenticado (comite asignado, lider o admin).
+     * @return Alerta en estado RESUELTA con historial de auditoria.
+     */
+    AlertaResponseDto resolverAlerta(
+            Long alertaId,
+            redalerta_backend.modules.alerta.dto.ResolverAlertaRequestDto request,
+            String emailUsuario
+    );
+
+    /**
+     * Descarta o rechaza una alerta comunitaria con justificacion documentada obligatoria.
+     * Transiciona el estado a RECHAZADA.
+     *
+     * @param alertaId     Identificador unico de la alerta.
+     * @param request      Motivo de rechazo de la alerta.
+     * @param emailUsuario Correo del usuario autenticado (comite asignado, lider o admin).
+     * @return Alerta en estado RECHAZADA con historial de auditoria.
+     */
+    AlertaResponseDto rechazarAlerta(
+            Long alertaId,
+            redalerta_backend.modules.alerta.dto.RechazarAlertaRequestDto request,
+            String emailUsuario
     );
 }
