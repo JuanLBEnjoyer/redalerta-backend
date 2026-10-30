@@ -22,6 +22,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.modules.alerta.valueobject.CategoriaAlerta;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.PrioridadAlerta;
@@ -203,5 +204,66 @@ public class Alerta {
         );
 
         registrarPasoHistorial(motivoHistorial, EstadoAlerta.PENDIENTE_REVISION, lider);
+    }
+
+    public void iniciarGestion(Usuario actor, String observacionInicial) {
+        if (this.estado != EstadoAlerta.DIRECCIONADA) {
+            throw new BadRequestException("Solo se puede iniciar la gestión de alertas en estado DIRECCIONADA");
+        }
+        this.estado = EstadoAlerta.EN_GESTION;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeGestionIniciada(
+                this.descripcion,
+                actor.getNombre(),
+                observacionInicial
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.EN_GESTION, actor);
+    }
+
+    public void resolverAlerta(Usuario actor, String informeResolucion) {
+        if (this.estado != EstadoAlerta.EN_GESTION) {
+            throw new BadRequestException("Solo se pueden resolver alertas que se encuentren en estado EN_GESTION");
+        }
+        if (informeResolucion == null || informeResolucion.isBlank()) {
+            throw new BadRequestException("El informe de resolución de la alerta es obligatorio");
+        }
+        String informeLimpio = informeResolucion.trim();
+        if (informeLimpio.length() < 20 || informeLimpio.length() > 1500) {
+            throw new BadRequestException("El informe de resolución debe tener entre 20 y 1500 caracteres");
+        }
+
+        this.estado = EstadoAlerta.RESUELTA;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeResuelta(
+                this.descripcion,
+                actor.getNombre(),
+                informeLimpio
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.RESUELTA, actor);
+    }
+
+    public void rechazarAlerta(Usuario actor, String motivo) {
+        if (this.estado == EstadoAlerta.RESUELTA || this.estado == EstadoAlerta.RECHAZADA) {
+            throw new BadRequestException("No es posible rechazar una alerta que ya se encuentra finalizada");
+        }
+        if (motivo == null || motivo.isBlank()) {
+            throw new BadRequestException("El motivo de rechazo de la alerta es obligatorio");
+        }
+        String motivoLimpio = motivo.trim();
+        if (motivoLimpio.length() < 10 || motivoLimpio.length() > 500) {
+            throw new BadRequestException("El motivo de rechazo debe tener entre 10 y 500 caracteres");
+        }
+
+        this.estado = EstadoAlerta.RECHAZADA;
+
+        String motivoHistorial = redalerta_backend.modules.alerta.service.MensajeAlertaHelper.mensajeRechazada(
+                this.descripcion,
+                actor.getNombre(),
+                motivoLimpio
+        );
+
+        registrarPasoHistorial(motivoHistorial, EstadoAlerta.RECHAZADA, actor);
     }
 }

@@ -58,7 +58,7 @@ public class SolicitudRegistroResponseDto {
     @Schema(description = "Sector o comunidad representada (en caso de lider)", example = "Barrio La Castellana - JAC")
     private String sectorComunidad;
 
-    @Schema(description = "Razon social o nombre institucional (en caso de organizacion)", example = "Cuerpo de Bomberos Voluntarios")
+    @Schema(description = "Nombre o razon social del comite o brigada comunitaria", example = "Brigada Comunitaria de Emergencias")
     private String razonSocial;
 
     @Schema(description = "NIT institucional (en caso de organizacion)", example = "900123456-1")
