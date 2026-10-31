@@ -3,6 +3,10 @@ package redalerta_backend.modules.auth.service;
 import redalerta_backend.modules.auth.dto.LoginRequestDto;
 import redalerta_backend.modules.auth.dto.LoginResponseDto;
 import redalerta_backend.modules.auth.dto.RegistroRequestDto;
+import redalerta_backend.modules.auth.dto.RestablecerPasswordRequestDto;
+import redalerta_backend.modules.auth.dto.SolicitarRecuperacionRequestDto;
+import redalerta_backend.modules.auth.dto.VerificarCodigoRequestDto;
+import redalerta_backend.modules.auth.dto.VerificarCodigoResponseDto;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 
 /**
@@ -35,4 +39,32 @@ public interface AuthService {
      * Invalida el contexto de seguridad de la sesion del usuario autenticado en el hilo de ejecucion actual.
      */
     void logout();
+
+    /**
+     * Procesa la solicitud de recuperacion de contrasena emitiendo un codigo OTP de 6 digitos al correo del usuario.
+     * Implementa proteccion contra enumeracion de usuarios (OWASP) retornando de forma transparente
+     * sin revelar si la cuenta existe o no en el sistema.
+     *
+     * @param request DTO con el correo electronico de la cuenta a recuperar.
+     */
+    void solicitarRecuperacionPassword(SolicitarRecuperacionRequestDto request);
+
+    /**
+     * Valida de manera intermedia el codigo OTP de 6 digitos ingresado por el usuario.
+     * Aplica proteccion contra fuerza bruta limitando los intentos fallidos a un maximo de 3.
+     * Si el codigo es valido, lo invalida de inmediato y emite un token temporal de restablecimiento (resetToken).
+     *
+     * @param request DTO con el correo electronico y el codigo OTP recibido.
+     * @return DTO con el resetToken firmado y mensaje de exito.
+     * @throws redalerta_backend.common.exception.BadRequestException Si el codigo es invalido, expiro o supero intentos maximos.
+     */
+    VerificarCodigoResponseDto verificarCodigoRecuperacion(VerificarCodigoRequestDto request);
+
+    /**
+     * Valida el token temporal de restablecimiento (resetToken) y actualiza la contrasena del usuario.
+     *
+     * @param request DTO con el resetToken firmado y la nueva contrasena.
+     * @throws redalerta_backend.common.exception.BadRequestException Si el token es invalido, expiro o la cuenta esta inactiva.
+     */
+    void restablecerPassword(RestablecerPasswordRequestDto request);
 }

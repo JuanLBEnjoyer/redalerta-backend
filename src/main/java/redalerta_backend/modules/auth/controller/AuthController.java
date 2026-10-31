@@ -18,6 +18,10 @@ import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.auth.dto.LoginRequestDto;
 import redalerta_backend.modules.auth.dto.LoginResponseDto;
 import redalerta_backend.modules.auth.dto.RegistroRequestDto;
+import redalerta_backend.modules.auth.dto.RestablecerPasswordRequestDto;
+import redalerta_backend.modules.auth.dto.SolicitarRecuperacionRequestDto;
+import redalerta_backend.modules.auth.dto.VerificarCodigoRequestDto;
+import redalerta_backend.modules.auth.dto.VerificarCodigoResponseDto;
 import redalerta_backend.modules.auth.service.AuthService;
 import redalerta_backend.modules.usuario.dto.UsuarioResponseDto;
 
@@ -92,5 +96,71 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> logout() {
         authService.logout();
         return ResponseEntity.ok(ApiResponse.success(null, "Sesión cerrada exitosamente"));
+    }
+
+    /**
+     * Solicita el restablecimiento de contrasena para una cuenta de correo electronico.
+     * Genera un codigo OTP de 6 digitos y lo envia por correo electronico.
+     * Retorna un mensaje generico para prevenir enumeracion de cuentas (OWASP).
+     *
+     * @param request DTO con el correo electronico registrado.
+     * @return Mensaje generico informativo con codigo HTTP 200 OK.
+     */
+    @Operation(summary = "Solicitar recuperacion de contrasena", description = "Genera un codigo OTP de 6 digitos y lo envia al correo electronico si este se encuentra registrado.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Solicitud procesada con exito"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Formato de correo electronico invalido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/recuperar-password")
+    public ResponseEntity<ApiResponse<Void>> solicitarRecuperacion(
+            @Valid @RequestBody SolicitarRecuperacionRequestDto request) {
+        authService.solicitarRecuperacionPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                null,
+                "Si el correo electrónico coincide con una cuenta activa en el sistema, recibirá un código de recuperación de 6 dígitos válido por 10 minutos."
+        ));
+    }
+
+    /**
+     * Valida de forma intermedia el codigo OTP de 6 digitos ingresado por el usuario.
+     * Retorna un token temporal (resetToken) firmado criptograficamente para proceder al cambio de clave.
+     *
+     * @param request DTO con correo electronico y codigo OTP.
+     * @return Token temporal de restablecimiento y mensaje de aprobacion.
+     */
+    @Operation(summary = "Verificar codigo de recuperacion OTP", description = "Valida el codigo de 6 digitos enviado por correo y emite un resetToken temporal de un solo uso.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Codigo valido con emision de resetToken"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Codigo invalido, expirado o supero intentos maximos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/verificar-codigo")
+    public ResponseEntity<ApiResponse<VerificarCodigoResponseDto>> verificarCodigo(
+            @Valid @RequestBody VerificarCodigoRequestDto request) {
+        VerificarCodigoResponseDto response = authService.verificarCodigoRecuperacion(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Código verificado exitosamente"));
+    }
+
+    /**
+     * Restablece la contrasena de un usuario validando el token de autorizacion temporal (resetToken).
+     *
+     * @param request DTO con el resetToken firmado y la nueva contrasena.
+     * @return Confirmacion de cambio de contrasena con codigo HTTP 200 OK.
+     */
+    @Operation(summary = "Restablecer contrasena con resetToken", description = "Verifica el token temporal emitido tras validar el codigo OTP y actualiza la contrasena del usuario.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Contrasena restablecida exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Token invalido, expirado o formato de nueva contrasena no cumple requisitos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/restablecer-password")
+    public ResponseEntity<ApiResponse<Void>> restablecerPassword(
+            @Valid @RequestBody RestablecerPasswordRequestDto request) {
+        authService.restablecerPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                null,
+                "Contraseña restablecida exitosamente. Ya puede iniciar sesión con sus nuevas credenciales."
+        ));
     }
 }

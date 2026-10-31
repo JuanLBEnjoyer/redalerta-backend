@@ -160,6 +160,37 @@ public class JwtService {
                 .getPayload();
     }
 
+    /**
+     * Genera un token temporal de restablecimiento de contrasena (resetToken)
+     * con vigencia de 10 minutos y claim de proposito especifico.
+     *
+     * @param email Correo electronico del usuario verificado.
+     * @return Cadena JWT firmada con validez corta.
+     */
+    public String generatePasswordResetToken(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("purpose", "PASSWORD_RESET");
+        return buildToken(claims, email, 600000L);
+    }
+
+    /**
+     * Valida si el token corresponde a un token de restablecimiento legitimo y no expirado.
+     *
+     * @param token Cadena JWT.
+     * @return true si la firma es valida, no expiro y el claim purpose es PASSWORD_RESET.
+     */
+    public boolean isPasswordResetTokenValid(String token) {
+        try {
+            if (isTokenExpired(token)) {
+                return false;
+            }
+            String purpose = extractClaim(token, claims -> claims.get("purpose", String.class));
+            return "PASSWORD_RESET".equals(purpose);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private SecretKey getSignInKey() {
         byte[] keyBytes;
         try {

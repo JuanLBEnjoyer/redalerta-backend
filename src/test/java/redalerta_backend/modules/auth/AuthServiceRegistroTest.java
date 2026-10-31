@@ -120,7 +120,8 @@ class AuthServiceRegistroTest {
                                 .build();
 
                 when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioGuardado);
-                when(caracterizacionRepository.save(any(CaracterizacionUsuario.class))).thenAnswer(i -> i.getArgument(0));
+                when(caracterizacionRepository.save(any(CaracterizacionUsuario.class)))
+                                .thenAnswer(i -> i.getArgument(0));
                 when(usuarioMapper.toResponseDto(eq(usuarioGuardado), any(CaracterizacionUsuario.class))).thenReturn(
                                 UsuarioResponseDto.builder()
                                                 .id(1L)
