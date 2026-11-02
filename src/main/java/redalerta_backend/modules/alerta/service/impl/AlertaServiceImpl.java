@@ -32,6 +32,7 @@ import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.service.MensajeAlertaHelper;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
+import redalerta_backend.modules.notificacion.service.NotificacionService;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
@@ -51,17 +52,20 @@ public class AlertaServiceImpl implements AlertaService {
     private final UsuarioRepository usuarioRepository;
     private final AlertaMapper alertaMapper;
     private final StorageService storageService;
+    private final NotificacionService notificacionService;
 
     public AlertaServiceImpl(
             AlertaRepository alertaRepository,
             UsuarioRepository usuarioRepository,
             AlertaMapper alertaMapper,
-            StorageService storageService) {
+            StorageService storageService,
+            NotificacionService notificacionService) {
         super();
         this.alertaRepository = alertaRepository;
         this.usuarioRepository = usuarioRepository;
         this.alertaMapper = alertaMapper;
         this.storageService = storageService;
+        this.notificacionService = notificacionService;
     }
 
     /**
@@ -341,6 +345,30 @@ public class AlertaServiceImpl implements AlertaService {
                 request.getObservacionTecnica());
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
+
+        String resumenDesc = MensajeAlertaHelper.resumirDescripcion(alerta.getDescripcion());
+        // 1. Notificar al ciudadano (creador de la alerta)
+        notificacionService.notificar(
+                alerta.getAutor(),
+                alertaGuardada,
+                "Alerta Direccionada",
+                String.format("Su alerta \"%s\" ha cambiado a estado DIRECCIONADA", resumenDesc),
+                EstadoAlerta.DIRECCIONADA,
+                request.getObservacionTecnica(),
+                lider
+        );
+
+        // 2. Notificar a la organizacion de apoyo asignada
+        notificacionService.notificar(
+                organizacion,
+                alertaGuardada,
+                "Nueva Alerta Asignada",
+                String.format("Se le ha direccionado la alerta \"%s\" para su atención comunitaria", resumenDesc),
+                EstadoAlerta.DIRECCIONADA,
+                request.getObservacionTecnica(),
+                lider
+        );
+
         return alertaMapper.toResponseDto(alertaGuardada);
     }
 
@@ -434,6 +462,30 @@ public class AlertaServiceImpl implements AlertaService {
                 request.getObservacionTecnica());
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
+
+        String resumenDesc = MensajeAlertaHelper.resumirDescripcion(alerta.getDescripcion());
+        // 1. Notificar al ciudadano (creador de la alerta)
+        notificacionService.notificar(
+                alerta.getAutor(),
+                alertaGuardada,
+                "Direccionamiento Modificado",
+                String.format("El direccionamiento de su alerta \"%s\" ha sido actualizado", resumenDesc),
+                EstadoAlerta.DIRECCIONADA,
+                request.getObservacionTecnica(),
+                lider
+        );
+
+        // 2. Notificar a la organizacion asignada
+        notificacionService.notificar(
+                organizacion,
+                alertaGuardada,
+                "Alerta Actualizada",
+                String.format("Se le ha direccionado/actualizado la alerta \"%s\" para su gestión", resumenDesc),
+                EstadoAlerta.DIRECCIONADA,
+                request.getObservacionTecnica(),
+                lider
+        );
+
         return alertaMapper.toResponseDto(alertaGuardada);
     }
 
@@ -467,9 +519,36 @@ public class AlertaServiceImpl implements AlertaService {
             }
         }
 
+        Usuario organizacionPrevia = alerta.getOrganizacionAsignada();
         alerta.cancelarDireccionamiento(request.getMotivo(), lider);
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
+
+        String resumenDesc = MensajeAlertaHelper.resumirDescripcion(alerta.getDescripcion());
+        // 1. Notificar al ciudadano (creador de la alerta)
+        notificacionService.notificar(
+                alerta.getAutor(),
+                alertaGuardada,
+                "Direccionamiento Cancelado",
+                String.format("Su alerta \"%s\" ha cambiado a estado PENDIENTE_REVISION", resumenDesc),
+                EstadoAlerta.PENDIENTE_REVISION,
+                request.getMotivo(),
+                lider
+        );
+
+        // 2. Notificar a la organizacion de apoyo previa (si existia)
+        if (organizacionPrevia != null) {
+            notificacionService.notificar(
+                    organizacionPrevia,
+                    alertaGuardada,
+                    "Direccionamiento Cancelado",
+                    String.format("El direccionamiento de la alerta \"%s\" ha sido cancelado", resumenDesc),
+                    EstadoAlerta.PENDIENTE_REVISION,
+                    request.getMotivo(),
+                    lider
+            );
+        }
+
         return alertaMapper.toResponseDto(alertaGuardada);
     }
 
@@ -492,6 +571,32 @@ public class AlertaServiceImpl implements AlertaService {
         alerta.iniciarGestion(actor, observacion);
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
+
+        String resumenDesc = MensajeAlertaHelper.resumirDescripcion(alerta.getDescripcion());
+        // 1. Notificar al ciudadano (creador de la alerta)
+        notificacionService.notificar(
+                alerta.getAutor(),
+                alertaGuardada,
+                "Atención de Alerta Iniciada",
+                String.format("Su alerta \"%s\" ha cambiado a estado EN_GESTION", resumenDesc),
+                EstadoAlerta.EN_GESTION,
+                observacion,
+                actor
+        );
+
+        // 2. Notificar al lider comunitario que la direcciono (si existe)
+        if (alerta.getLiderComunitario() != null) {
+            notificacionService.notificar(
+                    alerta.getLiderComunitario(),
+                    alertaGuardada,
+                    "Alerta en Gestión",
+                    String.format("La alerta \"%s\" direccionada por usted ha cambiado a estado EN_GESTION", resumenDesc),
+                    EstadoAlerta.EN_GESTION,
+                    observacion,
+                    actor
+            );
+        }
+
         return alertaMapper.toResponseDto(alertaGuardada);
     }
 
@@ -513,6 +618,32 @@ public class AlertaServiceImpl implements AlertaService {
         alerta.resolverAlerta(actor, request.getInformeResolucion());
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
+
+        String resumenDesc = MensajeAlertaHelper.resumirDescripcion(alerta.getDescripcion());
+        // 1. Notificar al ciudadano (creador de la alerta)
+        notificacionService.notificar(
+                alerta.getAutor(),
+                alertaGuardada,
+                "Alerta Resuelta",
+                String.format("Su alerta \"%s\" ha cambiado a estado RESUELTA", resumenDesc),
+                EstadoAlerta.RESUELTA,
+                request.getInformeResolucion(),
+                actor
+        );
+
+        // 2. Notificar al lider comunitario que la direcciono (si existe)
+        if (alerta.getLiderComunitario() != null) {
+            notificacionService.notificar(
+                    alerta.getLiderComunitario(),
+                    alertaGuardada,
+                    "Alerta Resuelta",
+                    String.format("La alerta \"%s\" direccionada por usted ha cambiado a estado RESUELTA", resumenDesc),
+                    EstadoAlerta.RESUELTA,
+                    request.getInformeResolucion(),
+                    actor
+            );
+        }
+
         return alertaMapper.toResponseDto(alertaGuardada);
     }
 
@@ -534,6 +665,32 @@ public class AlertaServiceImpl implements AlertaService {
         alerta.rechazarAlerta(actor, request.getMotivo());
 
         Alerta alertaGuardada = alertaRepository.save(alerta);
+
+        String resumenDesc = MensajeAlertaHelper.resumirDescripcion(alerta.getDescripcion());
+        // 1. Notificar al ciudadano (creador de la alerta)
+        notificacionService.notificar(
+                alerta.getAutor(),
+                alertaGuardada,
+                "Alerta Rechazada",
+                String.format("Su alerta \"%s\" ha cambiado a estado RECHAZADA", resumenDesc),
+                EstadoAlerta.RECHAZADA,
+                request.getMotivo(),
+                actor
+        );
+
+        // 2. Notificar al lider comunitario que la direcciono (si existe)
+        if (alerta.getLiderComunitario() != null) {
+            notificacionService.notificar(
+                    alerta.getLiderComunitario(),
+                    alertaGuardada,
+                    "Alerta Rechazada",
+                    String.format("La alerta \"%s\" direccionada por usted ha cambiado a estado RECHAZADA", resumenDesc),
+                    EstadoAlerta.RECHAZADA,
+                    request.getMotivo(),
+                    actor
+            );
+        }
+
         return alertaMapper.toResponseDto(alertaGuardada);
     }
 

@@ -34,6 +34,7 @@ import redalerta_backend.modules.alerta.valueobject.CategoriaAlerta;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.PrioridadAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
+import redalerta_backend.modules.notificacion.service.NotificacionService;
 import redalerta_backend.modules.usuario.entity.Usuario;
 import redalerta_backend.modules.usuario.repository.UsuarioRepository;
 import redalerta_backend.modules.usuario.valueobject.Rol;
@@ -66,6 +67,9 @@ class AlertaServiceTest {
 
         @Mock
         private AlertaMapper alertaMapper;
+
+        @Mock
+        private NotificacionService notificacionService;
 
         @Mock
         private StorageService storageService;
@@ -410,7 +414,8 @@ class AlertaServiceTest {
                                 .altitud(1411.0)
                                 .build();
 
-                UbicacionAlerta nuevaUbicacionVO = new UbicacionAlerta("Risaralda", "Pereira", "Carrera 7 # 20-30", 4.8133, -75.6961, 1411.0);
+                UbicacionAlerta nuevaUbicacionVO = new UbicacionAlerta("Risaralda", "Pereira", "Carrera 7 # 20-30",
+                                4.8133, -75.6961, 1411.0);
 
                 ModificarAlertaRequestDto request = ModificarAlertaRequestDto.builder()
                                 .descripcion("Descripcion actualizada del incidente")
@@ -715,26 +720,24 @@ class AlertaServiceTest {
                                 AlertaResponseDto.builder().id(1L).descripcion("Alerta en mi zona")
                                                 .estado(EstadoAlerta.PENDIENTE_REVISION).totalEvidencias(0).build());
 
-                // 1. Validar tolerancia a null (filtro == null)
                 Page<AlertaResponseDto> resultadoNull = alertaService.listarAlertas(null, "carlos@example.com",
                                 pageable);
                 assertNotNull(resultadoNull);
                 assertEquals(1, resultadoNull.getContent().size());
 
-                // 2. Validar asignacion forzada de departamento del usuario cuando se pasa filtro vacio
                 FiltroAlertaDto filtroVacio = new FiltroAlertaDto();
                 Page<AlertaResponseDto> resultadoVacio = alertaService.listarAlertas(filtroVacio, "carlos@example.com",
                                 pageable);
                 assertNotNull(resultadoVacio);
                 assertEquals("Antioquia", filtroVacio.getDepartamento());
-                assertNull(filtroVacio.getMunicipio()); // Permite consultar todos los municipios del departamento
+                assertNull(filtroVacio.getMunicipio());
 
-                // 3. Validar que cualquier departamento externo enviado es sobreescrito por el del usuario
                 FiltroAlertaDto filtroConOtroDepto = FiltroAlertaDto.builder()
                                 .departamento("Santander")
                                 .municipio("Bello")
                                 .build();
-                Page<AlertaResponseDto> resultadoOtro = alertaService.listarAlertas(filtroConOtroDepto, "carlos@example.com",
+                Page<AlertaResponseDto> resultadoOtro = alertaService.listarAlertas(filtroConOtroDepto,
+                                "carlos@example.com",
                                 pageable);
                 assertNotNull(resultadoOtro);
                 assertEquals("Antioquia", filtroConOtroDepto.getDepartamento());
@@ -843,8 +846,6 @@ class AlertaServiceTest {
                 verify(storageService, never()).subirEvidencia(any(), any());
         }
 
-        // ==================== HU-06: DIRECCIONAMIENTO DE ALERTAS ====================
-
         @Test
         @DisplayName("Debe direccionar una alerta exitosamente asignando categoria, prioridad y observacion")
         void direccionarAlertaExitoso() {
@@ -869,7 +870,8 @@ class AlertaServiceTest {
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
                                 .descripcion("Incendio estructural en bodega comercial")
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar Calle 15", 4.5400, -75.6700, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar Calle 15", 4.5400,
+                                                -75.6700, 1480.0))
                                 .autor(usuarioCiudadano)
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
@@ -878,7 +880,8 @@ class AlertaServiceTest {
                                 .categoria(CategoriaAlerta.INCENDIO)
                                 .prioridad(PrioridadAlerta.ALTA)
                                 .organizacionId(20L)
-                                .observacionTecnica("Se requiere desplazamiento urgente de brigadistas comunitarios con extintores.")
+                                .observacionTecnica(
+                                                "Se requiere desplazamiento urgente de brigadistas comunitarios con extintores.")
                                 .build();
 
                 when(alertaRepository.findById(100L)).thenReturn(Optional.of(alerta));
@@ -899,7 +902,8 @@ class AlertaServiceTest {
                                 .build();
                 when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(dtoEsperado);
 
-                AlertaResponseDto resultado = alertaService.direccionarAlerta(100L, request, "lider.armenia@redalerta.gov.co");
+                AlertaResponseDto resultado = alertaService.direccionarAlerta(100L, request,
+                                "lider.armenia@redalerta.gov.co");
 
                 assertNotNull(resultado);
                 assertEquals(EstadoAlerta.DIRECCIONADA, resultado.getEstado());
@@ -961,10 +965,12 @@ class AlertaServiceTest {
                                 .observacionTecnica("Fuga de agua potable.")
                                 .build();
 
-                when(usuarioRepository.findByEmail("lider.inactivo@redalerta.gov.co")).thenReturn(Optional.of(liderInactivo));
+                when(usuarioRepository.findByEmail("lider.inactivo@redalerta.gov.co"))
+                                .thenReturn(Optional.of(liderInactivo));
 
                 UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                                () -> alertaService.direccionarAlerta(100L, request, "lider.inactivo@redalerta.gov.co"));
+                                () -> alertaService.direccionarAlerta(100L, request,
+                                                "lider.inactivo@redalerta.gov.co"));
 
                 assertEquals("El usuario se encuentra inactivo", ex.getMessage());
                 verify(alertaRepository, never()).save(any());
@@ -984,7 +990,8 @@ class AlertaServiceTest {
 
                 Alerta alertaArmenia = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar", 4.5400, -75.6700, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Av Bolivar", 4.5400, -75.6700,
+                                                1480.0))
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
 
@@ -995,7 +1002,8 @@ class AlertaServiceTest {
                                 .observacionTecnica("Atencion fuera de municipio.")
                                 .build();
 
-                when(usuarioRepository.findByEmail("lider.calarca@redalerta.gov.co")).thenReturn(Optional.of(liderCalarca));
+                when(usuarioRepository.findByEmail("lider.calarca@redalerta.gov.co"))
+                                .thenReturn(Optional.of(liderCalarca));
                 when(alertaRepository.findById(100L)).thenReturn(Optional.of(alertaArmenia));
 
                 UnauthorizedException ex = assertThrows(UnauthorizedException.class,
@@ -1027,7 +1035,8 @@ class AlertaServiceTest {
 
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811,
+                                                1480.0))
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
 
@@ -1071,7 +1080,8 @@ class AlertaServiceTest {
 
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811,
+                                                1480.0))
                                 .estado(EstadoAlerta.PENDIENTE_REVISION)
                                 .build();
 
@@ -1106,7 +1116,8 @@ class AlertaServiceTest {
 
                 Alerta alertaYaDireccionada = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811,
+                                                1480.0))
                                 .estado(EstadoAlerta.DIRECCIONADA)
                                 .build();
 
@@ -1161,7 +1172,8 @@ class AlertaServiceTest {
                                                 .municipio("Armenia")
                                                 .build());
 
-                List<OrganizacionResponseDto> resultado = alertaService.listarOrganizacionesElegibles("lider.armenia@redalerta.gov.co");
+                List<OrganizacionResponseDto> resultado = alertaService
+                                .listarOrganizacionesElegibles("lider.armenia@redalerta.gov.co");
 
                 assertNotNull(resultado);
                 assertEquals(1, resultado.size());
@@ -1190,7 +1202,8 @@ class AlertaServiceTest {
                 Page<Alerta> pageAlertas = new PageImpl<>(List.of(alerta), pageable, 1);
 
                 when(usuarioRepository.findByEmail("lider.armenia@redalerta.gov.co")).thenReturn(Optional.of(lider));
-                when(alertaRepository.findByLiderComunitarioIdOrderByFechaCreacionDesc(5L, pageable)).thenReturn(pageAlertas);
+                when(alertaRepository.findByLiderComunitarioIdOrderByFechaCreacionDesc(5L, pageable))
+                                .thenReturn(pageAlertas);
                 when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
                                 AlertaResponseDto.builder()
                                                 .id(100L)
@@ -1198,7 +1211,8 @@ class AlertaServiceTest {
                                                 .liderId(5L)
                                                 .build());
 
-                Page<AlertaResponseDto> resultado = alertaService.listarAlertasDireccionadasPorLider("lider.armenia@redalerta.gov.co", pageable);
+                Page<AlertaResponseDto> resultado = alertaService
+                                .listarAlertasDireccionadasPorLider("lider.armenia@redalerta.gov.co", pageable);
 
                 assertNotNull(resultado);
                 assertEquals(1, resultado.getTotalElements());
@@ -1226,7 +1240,8 @@ class AlertaServiceTest {
                 Pageable pageable = PageRequest.of(0, 10);
                 Page<Alerta> pageAlertas = new PageImpl<>(List.of(alerta), pageable, 1);
 
-                when(usuarioRepository.findByEmail("brigada.armenia@redalerta.org")).thenReturn(Optional.of(organizacion));
+                when(usuarioRepository.findByEmail("brigada.armenia@redalerta.org"))
+                                .thenReturn(Optional.of(organizacion));
                 when(alertaRepository.findByOrganizacionAsignadaIdAndEstadoInOrderByFechaCreacionDesc(
                                 eq(20L), any(), eq(pageable))).thenReturn(pageAlertas);
                 when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
@@ -1236,7 +1251,8 @@ class AlertaServiceTest {
                                                 .organizacionId(20L)
                                                 .build());
 
-                Page<AlertaResponseDto> resultado = alertaService.listarBandejaOrganizacion("brigada.armenia@redalerta.org", pageable);
+                Page<AlertaResponseDto> resultado = alertaService
+                                .listarBandejaOrganizacion("brigada.armenia@redalerta.org", pageable);
 
                 assertNotNull(resultado);
                 assertEquals(1, resultado.getTotalElements());
@@ -1267,7 +1283,8 @@ class AlertaServiceTest {
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
                                 .descripcion("Robo en establecimiento comercial")
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 14", 4.5338, -75.6811, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 14", 4.5338, -75.6811,
+                                                1480.0))
                                 .autor(usuarioCiudadano)
                                 .estado(EstadoAlerta.DIRECCIONADA)
                                 .liderComunitario(lider)
@@ -1279,7 +1296,8 @@ class AlertaServiceTest {
                                 .categoria(CategoriaAlerta.SEGURIDAD_CIUDADANA)
                                 .prioridad(PrioridadAlerta.ALTA)
                                 .organizacionId(21L)
-                                .observacionTecnica("Se rectifica clasificacion hacia Comite Barrial de Seguridad por tratarse de convivencia.")
+                                .observacionTecnica(
+                                                "Se rectifica clasificacion hacia Comite Barrial de Seguridad por tratarse de convivencia.")
                                 .build();
 
                 when(usuarioRepository.findByEmail("lider.armenia@redalerta.gov.co")).thenReturn(Optional.of(lider));
@@ -1297,7 +1315,8 @@ class AlertaServiceTest {
                                 .build();
                 when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(dtoActualizado);
 
-                AlertaResponseDto resultado = alertaService.modificarDireccionamiento(100L, request, "lider.armenia@redalerta.gov.co");
+                AlertaResponseDto resultado = alertaService.modificarDireccionamiento(100L, request,
+                                "lider.armenia@redalerta.gov.co");
 
                 assertNotNull(resultado);
                 assertEquals(CategoriaAlerta.SEGURIDAD_CIUDADANA, resultado.getCategoria());
@@ -1344,7 +1363,8 @@ class AlertaServiceTest {
                 when(alertaRepository.findById(100L)).thenReturn(Optional.of(alerta));
 
                 assertThrows(UnauthorizedException.class,
-                                () -> alertaService.modificarDireccionamiento(100L, request, "otro.lider@redalerta.gov.co"));
+                                () -> alertaService.modificarDireccionamiento(100L, request,
+                                                "otro.lider@redalerta.gov.co"));
 
                 verify(alertaRepository, never()).save(any());
         }
@@ -1375,9 +1395,11 @@ class AlertaServiceTest {
                 when(alertaRepository.findById(100L)).thenReturn(Optional.of(alertaPendiente));
 
                 BadRequestException ex = assertThrows(BadRequestException.class,
-                                () -> alertaService.modificarDireccionamiento(100L, request, "lider.armenia@redalerta.gov.co"));
+                                () -> alertaService.modificarDireccionamiento(100L, request,
+                                                "lider.armenia@redalerta.gov.co"));
 
-                assertEquals("Solo se puede modificar el direccionamiento de alertas en estado DIRECCIONADA", ex.getMessage());
+                assertEquals("Solo se puede modificar el direccionamiento de alertas en estado DIRECCIONADA",
+                                ex.getMessage());
                 verify(alertaRepository, never()).save(any());
         }
 
@@ -1423,7 +1445,8 @@ class AlertaServiceTest {
                                 .build();
                 when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(dtoCancelado);
 
-                AlertaResponseDto resultado = alertaService.cancelarDireccionamiento(100L, request, "lider.armenia@redalerta.gov.co");
+                AlertaResponseDto resultado = alertaService.cancelarDireccionamiento(100L, request,
+                                "lider.armenia@redalerta.gov.co");
 
                 assertNotNull(resultado);
                 assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.getEstado());
@@ -1472,7 +1495,8 @@ class AlertaServiceTest {
                 when(alertaRepository.findById(100L)).thenReturn(Optional.of(alerta));
 
                 assertThrows(UnauthorizedException.class,
-                                () -> alertaService.cancelarDireccionamiento(100L, request, "otro.lider@redalerta.gov.co"));
+                                () -> alertaService.cancelarDireccionamiento(100L, request,
+                                                "otro.lider@redalerta.gov.co"));
 
                 verify(alertaRepository, never()).save(any());
         }
@@ -1500,9 +1524,11 @@ class AlertaServiceTest {
                 when(alertaRepository.findById(100L)).thenReturn(Optional.of(alertaPendiente));
 
                 BadRequestException ex = assertThrows(BadRequestException.class,
-                                () -> alertaService.cancelarDireccionamiento(100L, request, "lider.armenia@redalerta.gov.co"));
+                                () -> alertaService.cancelarDireccionamiento(100L, request,
+                                                "lider.armenia@redalerta.gov.co"));
 
-                assertEquals("Solo se puede cancelar el direccionamiento de alertas en estado DIRECCIONADA", ex.getMessage());
+                assertEquals("Solo se puede cancelar el direccionamiento de alertas en estado DIRECCIONADA",
+                                ex.getMessage());
                 verify(alertaRepository, never()).save(any());
         }
 
@@ -1538,7 +1564,8 @@ class AlertaServiceTest {
                                 .build();
                 when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(dtoEsperado);
 
-                AlertaResponseDto resultado = alertaService.iniciarGestion(100L, request, "brigada.armenia@redalerta.org");
+                AlertaResponseDto resultado = alertaService.iniciarGestion(100L, request,
+                                "brigada.armenia@redalerta.org");
 
                 assertNotNull(resultado);
                 assertEquals(EstadoAlerta.EN_GESTION, resultado.getEstado());
@@ -1625,7 +1652,8 @@ class AlertaServiceTest {
                                 .build();
 
                 ResolverAlertaRequestDto request = ResolverAlertaRequestDto.builder()
-                                .informeResolucion("Se retiraron los escombros y se restablecio el paso vehicular comunitario.")
+                                .informeResolucion(
+                                                "Se retiraron los escombros y se restablecio el paso vehicular comunitario.")
                                 .build();
 
                 when(usuarioRepository.findByEmail("brigada.armenia@redalerta.org")).thenReturn(Optional.of(brigada));
@@ -1638,7 +1666,8 @@ class AlertaServiceTest {
                                 .build();
                 when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(dtoEsperado);
 
-                AlertaResponseDto resultado = alertaService.resolverAlerta(100L, request, "brigada.armenia@redalerta.org");
+                AlertaResponseDto resultado = alertaService.resolverAlerta(100L, request,
+                                "brigada.armenia@redalerta.org");
 
                 assertNotNull(resultado);
                 assertEquals(EstadoAlerta.RESUELTA, resultado.getEstado());
@@ -1691,7 +1720,8 @@ class AlertaServiceTest {
                 Alerta alerta = Alerta.builder()
                                 .id(100L)
                                 .descripcion("Presunto incidente en via publica")
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811,
+                                                1480.0))
                                 .estado(EstadoAlerta.DIRECCIONADA)
                                 .organizacionAsignada(brigada)
                                 .build();
@@ -1710,7 +1740,8 @@ class AlertaServiceTest {
                                 .build();
                 when(alertaMapper.toResponseDto(any(Alerta.class))).thenReturn(dtoEsperado);
 
-                AlertaResponseDto resultado = alertaService.rechazarAlerta(100L, request, "brigada.armenia@redalerta.org");
+                AlertaResponseDto resultado = alertaService.rechazarAlerta(100L, request,
+                                "brigada.armenia@redalerta.org");
 
                 assertNotNull(resultado);
                 assertEquals(EstadoAlerta.RECHAZADA, resultado.getEstado());
@@ -1732,7 +1763,8 @@ class AlertaServiceTest {
 
                 Alerta alertaResuelta = Alerta.builder()
                                 .id(100L)
-                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811, 1480.0))
+                                .ubicacion(new UbicacionAlerta("Quindio", "Armenia", "Calle 10", 4.5338, -75.6811,
+                                                1480.0))
                                 .estado(EstadoAlerta.RESUELTA)
                                 .organizacionAsignada(brigada)
                                 .build();
@@ -1786,16 +1818,15 @@ class AlertaServiceTest {
                 assertTrue(exIniciar.getMessage().contains("Rol no autorizado"));
 
                 UnauthorizedException exResolver = assertThrows(UnauthorizedException.class,
-                                () -> alertaService.resolverAlerta(100L, reqResolver, "lider.armenia@redalerta.gov.co"));
+                                () -> alertaService.resolverAlerta(100L, reqResolver,
+                                                "lider.armenia@redalerta.gov.co"));
                 assertTrue(exResolver.getMessage().contains("Rol no autorizado"));
 
                 UnauthorizedException exRechazar = assertThrows(UnauthorizedException.class,
-                                () -> alertaService.rechazarAlerta(100L, reqRechazar, "lider.armenia@redalerta.gov.co"));
+                                () -> alertaService.rechazarAlerta(100L, reqRechazar,
+                                                "lider.armenia@redalerta.gov.co"));
                 assertTrue(exRechazar.getMessage().contains("Rol no autorizado"));
 
                 verify(alertaRepository, never()).save(any());
         }
 }
-
-
-
