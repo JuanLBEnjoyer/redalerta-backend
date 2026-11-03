@@ -1,6 +1,6 @@
 # RedAlerta Backend API
 
-Servicio central del ecosistema de seguridad comunitaria RedAlerta. Este backend expone una API RESTful stateless unificada, diseñada para ser consumida por la aplicacion movil (Android) y el panel web administrativo.
+Servicio central del ecosistema de seguridad y autogestion comunitaria **RedAlerta**. Este backend expone una API RESTful stateless unificada, disenada para ser consumida por la aplicacion movil (Android) y el panel web administrativo.
 
 ---
 
@@ -9,31 +9,36 @@ Servicio central del ecosistema de seguridad comunitaria RedAlerta. Este backend
 * **Lenguaje:** Java 25
 * **Framework:** Spring Boot 4.1.1
   * Spring Web (Controladores REST y serializacion JSON)
-  * Spring Security (Arquitectura stateless y autorizacion basada en roles)
-  * Spring Data JPA (Capa de persistencia con Hibernate)
+  * Spring Security (Arquitectura stateless y autorizacion basada en roles `@PreAuthorize`)
+  * Spring Data JPA (Capa de persistencia con Hibernate y `JpaSpecificationExecutor`)
   * Jakarta Bean Validation (Validacion declarativa de DTOs)
+  * Spring Boot Starter Mail (Envio de correos transaccionales via SMTP / Brevo)
 * **Seguridad y Criptografia:**
-  * JJWT (io.jsonwebtoken 0.12.6) para emision, firma HMAC-SHA256 y validacion de tokens JWT
-  * BCryptPasswordEncoder para almacenamiento seguro de credenciales
-* **Base de Datos:** PostgreSQL 16+ (dialecto PostgreSQLDialect)
+  * JJWT (`io.jsonwebtoken` 0.12.6) para emision, firma HMAC-SHA256 y validacion de tokens JWT de sesion y de proposito unico (`PASSWORD_RESET`)
+  * `BCryptPasswordEncoder` para almacenamiento seguro de contrasenas y codigos OTP
+  * `SecureRandom` para generacion criptografica de codigos de verificacion de 6 digitos
+* **Almacenamiento en la Nube y Multimedia:**
+  * AWS SDK for Java v2 (`software.amazon.awssdk:s3` 2.29.50) para gestion de evidencias en Amazon S3
+  * Thumbnailator (`net.coobird:thumbnailator` 0.4.20) para redimensionamiento y compresion automatica de imagenes con validacion de cabeceras binarias (Magic Bytes)
+* **Base de Datos:** PostgreSQL 16+
+* **Documentacion API:** SpringDoc OpenAPI 3 (`springdoc-openapi-starter-webmvc-ui` 2.8.5)
 * **Testing:**
   * JUnit 5 (Jupiter Platform)
-  * Mockito para pruebas unitarias aisladas
-* **Herramientas de Construccion:** Apache Maven con Maven Wrapper (mvnw)
-* **Librerias Complementarias:** Project Lombok
+  * Mockito para pruebas unitarias aisladas (170 pruebas automatizadas)
+* **Herramientas de Construccion:** Apache Maven con Maven Wrapper (`mvnw`) y soporte Docker (`Dockerfile`)
 
 ---
 
-## Arquitectura del Sistema
+## Arquitectura y Modulos del Sistema
 
-El proyecto esta construido bajo una arquitectura modular orientada al dominio (Domain-Driven Design - DDD):
+El proyecto esta construido bajo una arquitectura modular orientada al dominio (**Domain-Driven Design - DDD**) y principios **Zero Trust**:
 
 * **Context Path Base:** `/api/v1` (ejemplo: `http://localhost:8080/api/v1/auth/login`)
-* **Value Objects Inmutables:** El dominio encapsula reglas de negocio en objetos de valor inmutables (`Documento`, `Ubicacion`, `UbicacionAlerta`, `Rol`, `Genero`, `TipoDeDocumento`).
+* **Value Objects Inmutables:** El dominio encapsula invariantes y reglas de negocio en objetos de valor inmutables (`Documento`, `Ubicacion`, `UbicacionAlerta`, `RegistroHistorial`, `Rol`, `Genero`, `TipoDeDocumento`, `EstadoAlerta`, `CategoriaAlerta`, `PrioridadAlerta`).
 * **Estandarizacion de Respuestas:**
-  * **Exito (HTTP 2xx):** Envoltorio generico `ApiResponse<T>` con estado, mensaje y carga util.
-  * **Errores (HTTP 4xx / 5xx):** Capturados centralizadamente por `GlobalExceptionHandler` (`@RestControllerAdvice`), retornando estructuras `ErrorResponse` consistentes.
-* **Seguridad Stateless:** Cada solicitud protegida es interceptada por `JwtAuthenticationFilter`, que extrae y valida el token portador (`Bearer`) antes de autorizar el acceso.
+  * **Exito (HTTP 2xx):** Envoltorio generico `ApiResponse<T>` con indicadores `success`, `message`, `data` y `timestamp`.
+  * **Errores (HTTP 4xx / 5xx):** Capturados centralizadamente por `GlobalExceptionHandler` (`@RestControllerAdvice`), retornando estructuras `ErrorResponse` consistentes sin exponer trazas internas del servidor.
+* **Seguridad Stateless:** Cada solicitud protegida es interceptada por `JwtAuthenticationFilter`, que valida la firma del token portador (`Bearer`) y verifica en `CustomUserDetailsService` que la cuenta del usuario permanezca activa.
 
 ---
 
@@ -41,9 +46,19 @@ El proyecto esta construido bajo una arquitectura modular orientada al dominio (
 
 ### Requisitos Previos
 
-1. Java Development Kit (JDK) 25 o compatible instalado.
-2. PostgreSQL 16+ en ejecucion local o en contenedor Docker.
-3. Base de datos `redalerta_db` creada para el proyecto.
+1. Java Development Kit (JDK) 25 instalado.
+2. PostgreSQL 16+ en ejecucion local o mediante Docker.
+
+Para levantar rapidamente una instancia de PostgreSQL 16 en Docker:
+```bash
+docker run -d \
+  --name redalerta-postgres \
+  -e POSTGRES_DB=redalerta_db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  postgres:16-alpine
+```
 
 ### Configuracion del Entorno
 
@@ -58,25 +73,42 @@ El proyecto esta construido bajo una arquitectura modular orientada al dominio (
    cp src/main/resources/application-example.properties src/main/resources/application.properties
    ```
 
-   > Nota de seguridad: El archivo `application.properties` se encuentra excluido del control de versiones (.gitignore) para evitar la filtracion de credenciales y claves secretas al repositorio publico.
+   > Nota de seguridad: El archivo `application.properties` se encuentra excluido del control de versiones (`.gitignore`) para evitar la filtracion de credenciales y claves secretas.
 
-3. Configurar las variables requeridas en `application.properties` o mediante variables de entorno del sistema (`JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`).
+3. Configurar las variables en `application.properties` o mediante variables de entorno del sistema:
+
+   | Variable | Descripcion | Valor por defecto (Desarrollo) |
+   | :--- | :--- | :--- |
+   | `DB_URL` | URL JDBC de conexion a PostgreSQL | `jdbc:postgresql://localhost:5432/redalerta_db` |
+   | `DB_USERNAME` | Usuario de base de datos | `postgres` |
+   | `DB_PASSWORD` | Contrasena de base de datos | `postgres` |
+   | `JWT_SECRET` | Clave secreta hexadecimal (minimo 256 bits) para firmar tokens | Clave de desarrollo en plantilla |
+   | `JWT_EXPIRATION_MS` | Tiempo de vida del token de sesion en milisegundos | `86400000` (24 horas) |
+   | `AWS_S3_BUCKET_NAME` | Nombre del bucket en Amazon S3 para evidencias | `redalerta-evidencias` |
+   | `AWS_ACCESS_KEY_ID` | Credencial de acceso IAM con permisos sobre el bucket S3 | *(Vacio en plantilla)* |
+   | `AWS_SECRET_ACCESS_KEY` | Clave secreta IAM para S3 | *(Vacio en plantilla)* |
+   | `AWS_REGION` | Region de AWS donde reside el bucket | `us-east-1` |
+   | `SPRING_MAIL_HOST` | Servidor SMTP (ej. `smtp-relay.brevo.com` o `smtp.gmail.com`) | `smtp.gmail.com` |
+   | `SPRING_MAIL_PORT` | Puerto SMTP con STARTTLS | `587` |
+   | `SPRING_MAIL_USERNAME` | Usuario de autenticacion SMTP | *(Vacio: activa modo fallback en consola)* |
+   | `SPRING_MAIL_PASSWORD` | Clave SMTP o API Key de envio | *(Vacio en plantilla)* |
+   | `APP_MAIL_FROM` | Correo remitente verificado en el proveedor SMTP | `soporte.redalerta@gmail.com` |
 
 ### Compilacion y Ejecucion de Pruebas
 
-Para validar la compilacion del codigo y ejecutar la suite completa de pruebas unitarias:
+Para validar la compilacion del codigo y ejecutar las pruebas unitarias:
 
 ```bash
-sh ./mvnw clean test
+./mvnw clean test
 ```
 
 ### Ejecutar la Aplicacion
 
 ```bash
-sh ./mvnw spring-boot:run
+./mvnw spring-boot:run
 ```
 
-El servidor iniciara en el puerto `8080` bajo el contexto base `/api/v1`.
+El servidor iniciara en el puerto `8080` bajo el contexto base `/api/v1`. Al iniciar con la base de datos vacia, el componente `TestDataSeeder` creara automaticamente usuarios semilla para todos los roles (`CIUDADANO`, `LIDER`, `ORGANIZACION` y `ADMIN`) con la contrasena de prueba `Password123!`.
 
 ---
 
@@ -91,27 +123,19 @@ Para evitar la desincronizacion entre el codigo fuente y la documentacion escrit
 
 ### Como Explorar y Probar la API desde Swagger UI
 
-Swagger UI permite inspeccionar todos los endpoints agrupados por modulos (`Auth`, `Usuarios`, `Alertas`), sus esquemas DTO con validaciones, y ejecutar peticiones directamente:
-
 1. **Iniciar el servidor local:**
    ```bash
-   sh ./mvnw spring-boot:run
+   ./mvnw spring-boot:run
    ```
 2. **Generar un Token de Autenticacion:**
-   - Despliegue el modulo **Auth** en Swagger UI.
-   - Seleccione el endpoint `POST /api/v1/auth/login` (o cree un usuario nuevo en `POST /api/v1/auth/registro`).
-   - Haga clic en **Try it out**, ingrese las credenciales y presione **Execute**.
-   - Copie el valor del token JWT retornado en el campo `data.token`.
+   * Despliegue el modulo **Autenticacion** en Swagger UI.
+   * Seleccione `POST /api/v1/auth/login` (puede usar una de las cuentas semilla de `TestDataSeeder`, por ejemplo `ciudadano1@redalerta.com`, `lider.armenia@redalerta.com`, `brigada.emergencias.armenia@redalerta.org` o `admin@redalerta.com` con clave `Password123!`).
+   * Copie el valor del token JWT retornado en `data.token`.
 3. **Autorizar las Peticiones en Swagger:**
-   - En la parte superior derecha de Swagger UI, haga clic en el boton **Authorize** (candado).
-   - En la ventana emergente, pegue el token en el campo **Value** del esquema `BearerAuth`.
-   - Haga clic en **Authorize** y luego en **Close**.
+   * En la parte superior derecha de Swagger UI, haga clic en el boton **Authorize** (candado).
+   * Pegue el token en el campo **Value** del esquema `BearerAuth` y presione **Authorize**.
 4. **Probar Endpoints Protegidos:**
-   - A partir de este momento, cualquier solicitud enviada desde la consola (como consultar perfiles, publicar alertas, paginar listados o eliminar alertas) incluira automaticamente el encabezado HTTP:
-     ```http
-     Authorization: Bearer <token_jwt>
-     ```
-   - Podra visualizar en tiempo real los codigos de respuesta HTTP (200, 201, 400, 401, 403, 404) y la estructura de los payloads.
+   * Cualquier solicitud enviada desde la consola incluira automaticamente el encabezado `Authorization: Bearer <token_jwt>`.
 
 ---
 
@@ -119,3 +143,4 @@ Swagger UI permite inspeccionar todos los endpoints agrupados por modulos (`Auth
 
 * **[Diseno Funcional y Modelo de Negocio](DISENO_FUNCIONAL_Y_MODELO_NEGOCIO.md):** Vision de producto, ecosistema de roles, modelo territorial, flujos operativos de triaje y politicas de negocio.
 * **[Guia de Desarrollo y Onboarding](GUIA_DESARROLLO.md):** Estandares tecnicos de ingenieria, arquitectura limpia, flujo de trabajo GitFlow y politicas de testing.
+
