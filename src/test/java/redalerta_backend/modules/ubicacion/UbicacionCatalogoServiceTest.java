@@ -26,14 +26,15 @@ class UbicacionCatalogoServiceTest {
     }
 
     @Test
-    @DisplayName("Debe cargar los 32 departamentos de Colombia mas Bogota D.C. desde el archivo JSON")
+    @DisplayName("Debe cargar los 32 departamentos de Colombia desde el archivo JSON")
     void debeCargarDepartamentosDesdeJson() {
         List<String> departamentos = service.listarDepartamentos();
         assertNotNull(departamentos);
-        assertEquals(33, departamentos.size());
+        assertEquals(32, departamentos.size());
         assertTrue(departamentos.contains("Quindío"));
         assertTrue(departamentos.contains("Antioquia"));
-        assertTrue(departamentos.contains("Bogotá, D.C."));
+        assertTrue(departamentos.contains("Cundinamarca"));
+        assertTrue(service.esUbicacionValida("Cundinamarca", "Bogotá"));
     }
 
     @Test
@@ -93,7 +94,7 @@ class UbicacionCatalogoServiceTest {
     @DisplayName("Debe obtener el catalogo completo con sus municipios")
     void debeObtenerCatalogoCompleto() {
         List<DepartamentoMunicipiosDto> catalogo = service.obtenerCatalogoCompleto();
-        assertEquals(33, catalogo.size());
+        assertEquals(32, catalogo.size());
         int totalMunicipios = catalogo.stream().mapToInt(d -> d.municipios().size()).sum();
         assertTrue(totalMunicipios >= 1100);
     }
