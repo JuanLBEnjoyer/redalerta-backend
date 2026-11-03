@@ -3,6 +3,7 @@ package redalerta_backend.modules.alerta.valueobject;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import redalerta_backend.common.exception.BadRequestException;
+import redalerta_backend.common.util.TextoGeograficoUtil;
 
 /**
  * Value Object inmutable que encapsula la ubicacion geografica y coordenadas
@@ -51,7 +52,7 @@ public record UbicacionAlerta(
         } else {
             direccionDetallada = direccionDetallada.trim();
         }
-        departamento = departamento.trim();
-        municipio = municipio.trim();
+        departamento = TextoGeograficoUtil.normalizarNombreGeografico(departamento);
+        municipio = TextoGeograficoUtil.normalizarNombreGeografico(municipio);
     }
 }

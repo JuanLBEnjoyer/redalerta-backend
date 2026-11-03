@@ -3,6 +3,7 @@ package redalerta_backend.modules.usuario.valueobject;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import redalerta_backend.common.exception.BadRequestException;
+import redalerta_backend.common.util.TextoGeograficoUtil;
 
 /**
  * Value Object inmutable que representa la ubicacion territorial y de residencia de un usuario.
@@ -29,8 +30,8 @@ public record Ubicacion(
         if (direccionResidencia == null || direccionResidencia.isBlank()) {
             throw new BadRequestException("La direccion de residencia es obligatoria");
         }
-        departamento = departamento.trim();
-        municipio = municipio.trim();
+        departamento = TextoGeograficoUtil.normalizarNombreGeografico(departamento);
+        municipio = TextoGeograficoUtil.normalizarNombreGeografico(municipio);
         direccionResidencia = direccionResidencia.trim();
     }
 }

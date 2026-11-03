@@ -2,7 +2,6 @@ package redalerta_backend.config.security;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -14,8 +13,10 @@ import java.util.Collections;
 
 /**
  * Adaptador personalizado de {@link UserDetailsService} de Spring Security.
- * Recupera la entidad de dominio {@link Usuario} utilizando el correo electronico
- * y la mapea a la representacion de usuario reconocida por el contexto de seguridad.
+ * Recupera la entidad de dominio {@link Usuario} utilizando el correo
+ * electronico
+ * y la mapea a la representacion de usuario reconocida por el contexto de
+ * seguridad.
  */
 @Service
 @RequiredArgsConstructor
@@ -27,8 +28,10 @@ public class CustomUserDetailsService implements UserDetailsService {
      * Carga el usuario a partir de su direccion de correo electronico.
      *
      * @param emailStr Direccion de correo electronico en formato cadena.
-     * @return Instancia de {@link UserDetails} con credenciales, estado activo y rol asignado.
-     * @throws UsernameNotFoundException Si no se encuentra un usuario registrado con dicho correo.
+     * @return Instancia de {@link UserDetails} con credenciales, estado activo y
+     *         rol asignado.
+     * @throws UsernameNotFoundException Si no se encuentra un usuario registrado
+     *                                   con dicho correo.
      */
     @Override
     public UserDetails loadUserByUsername(String emailStr) throws UsernameNotFoundException {
@@ -37,7 +40,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         return new UsuarioPrincipal(
                 usuario,
-                Collections.singletonList(new SimpleGrantedAuthority(usuario.getRol().name()))
-        );
+                Collections.singletonList(new SimpleGrantedAuthority(usuario.getRol().name())));
     }
 }
