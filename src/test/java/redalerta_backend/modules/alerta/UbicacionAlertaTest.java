@@ -47,6 +47,22 @@ class UbicacionAlertaTest {
         assertNull(ubicacion.altitud());
     }
 
+    @Test
+    @DisplayName("Debe normalizar tildes en departamento y municipio provenientes de GPS")
+    void normalizaTildesEnDepartamentoYMunicipio() {
+        UbicacionAlerta ubicacion = new UbicacionAlerta(
+                "Quindío",
+                "Calarcá",
+                "Calle 38 # 24-10",
+                4.5278,
+                -75.6406,
+                1573.0
+        );
+
+        assertEquals("Quindio", ubicacion.departamento());
+        assertEquals("Calarca", ubicacion.municipio());
+    }
+
     @ParameterizedTest
     @ValueSource(doubles = {-90.0001, 90.0001, -120.0, 100.0})
     @DisplayName("Debe lanzar BadRequestException si la latitud esta fuera del rango [-90.0, 90.0]")

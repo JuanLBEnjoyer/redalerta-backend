@@ -49,6 +49,7 @@ public class SecurityConfig {
                                 "/auth/recuperar-password",
                                 "/auth/verificar-codigo",
                                 "/auth/restablecer-password",
+                                "/ubicaciones/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")

@@ -2,6 +2,7 @@ package redalerta_backend.modules.alerta.repository;
 
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
+import redalerta_backend.common.util.TextoGeograficoUtil;
 import redalerta_backend.modules.alerta.dto.FiltroAlertaDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
@@ -35,19 +36,23 @@ public final class AlertaSpecification {
             List<Predicate> predicates = new ArrayList<>();
 
             if (filtro != null) {
-                // Filtro por departamento territorial (case-insensitive)
+                // Filtro por departamento territorial (case-insensitive y sin tildes)
                 if (filtro.getDepartamento() != null && !filtro.getDepartamento().isBlank()) {
+                    String deptoNormalizado = TextoGeograficoUtil.normalizarNombreGeografico(filtro.getDepartamento())
+                            .toLowerCase();
                     predicates.add(cb.equal(
                             cb.lower(root.get("ubicacion").get("departamento")),
-                            filtro.getDepartamento().trim().toLowerCase()
+                            deptoNormalizado
                     ));
                 }
 
-                // Filtro por municipio territorial (case-insensitive)
+                // Filtro por municipio territorial (case-insensitive y sin tildes)
                 if (filtro.getMunicipio() != null && !filtro.getMunicipio().isBlank()) {
+                    String muniNormalizado = TextoGeograficoUtil.normalizarNombreGeografico(filtro.getMunicipio())
+                            .toLowerCase();
                     predicates.add(cb.equal(
                             cb.lower(root.get("ubicacion").get("municipio")),
-                            filtro.getMunicipio().trim().toLowerCase()
+                            muniNormalizado
                     ));
                 }
 
