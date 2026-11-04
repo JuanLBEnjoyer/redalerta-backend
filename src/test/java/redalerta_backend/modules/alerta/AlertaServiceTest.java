@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import redalerta_backend.common.dto.CursorPageResponseDto;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
@@ -1828,5 +1829,68 @@ class AlertaServiceTest {
                 assertTrue(exRechazar.getMessage().contains("Rol no autorizado"));
 
                 verify(alertaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Debe retornar lote con hasNext=true y nextCursor cuando existen mas alertas que el tamano solicitado")
+        @SuppressWarnings("unchecked")
+        void listarFeedAlertasPorCursorConMasElementosRetornaNextCursorYHasNextTrue() {
+                Alerta a30 = Alerta.builder().id(30L).descripcion("Alerta 30").build();
+                Alerta a20 = Alerta.builder().id(20L).descripcion("Alerta 20").build();
+                Alerta a10 = Alerta.builder().id(10L).descripcion("Alerta 10").build();
+
+                when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                                .thenReturn(new PageImpl<>(List.of(a30, a20, a10)));
+                when(alertaMapper.toResumenResponseDto(eq(a30), eq(3)))
+                                .thenReturn(AlertaResponseDto.builder().id(30L).build());
+                when(alertaMapper.toResumenResponseDto(eq(a20), eq(3)))
+                                .thenReturn(AlertaResponseDto.builder().id(20L).build());
+
+                FiltroAlertaDto filtro = FiltroAlertaDto.builder().build();
+                CursorPageResponseDto<AlertaResponseDto> respuesta = alertaService.listarFeedAlertasPorCursor(
+                                filtro, "juan@example.com", 2);
+
+                assertNotNull(respuesta);
+                assertEquals(2, respuesta.size());
+                assertEquals(2, respuesta.content().size());
+                assertTrue(respuesta.hasNext());
+                assertEquals(20L, respuesta.nextCursor());
+        }
+
+        @Test
+        @DisplayName("Debe retornar ultimo lote con hasNext=false y nextCursor=null cuando no hay mas elementos")
+        @SuppressWarnings("unchecked")
+        void listarFeedAlertasPorCursorUltimoLoteRetornaHasNextFalseYNextCursorNull() {
+                Alerta a10 = Alerta.builder().id(10L).descripcion("Alerta 10").build();
+
+                when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                                .thenReturn(new PageImpl<>(List.of(a10)));
+                when(alertaMapper.toResumenResponseDto(eq(a10), eq(3)))
+                                .thenReturn(AlertaResponseDto.builder().id(10L).build());
+
+                FiltroAlertaDto filtro = FiltroAlertaDto.builder().cursorId(20L).build();
+                CursorPageResponseDto<AlertaResponseDto> respuesta = alertaService.listarFeedAlertasPorCursor(
+                                filtro, "juan@example.com", 2);
+
+                assertNotNull(respuesta);
+                assertEquals(1, respuesta.size());
+                assertFalse(respuesta.hasNext());
+                assertNull(respuesta.nextCursor());
+        }
+
+        @Test
+        @DisplayName("Debe lanzar BadRequestException cuando el tamano del lote o el cursor son invalidos")
+        void listarFeedAlertasPorCursorConParametrosInvalidosLanzaBadRequest() {
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.listarFeedAlertasPorCursor(new FiltroAlertaDto(), "juan@example.com", 0));
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.listarFeedAlertasPorCursor(new FiltroAlertaDto(), "juan@example.com", 51));
+
+                when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                FiltroAlertaDto filtroCursorInvalido = FiltroAlertaDto.builder().cursorId(-5L).build();
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.listarFeedAlertasPorCursor(filtroCursorInvalido, "juan@example.com", 10));
         }
 }
