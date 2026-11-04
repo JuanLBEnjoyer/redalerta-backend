@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import redalerta_backend.common.dto.ApiResponse;
+import redalerta_backend.common.dto.CursorPageResponseDto;
 import redalerta_backend.common.dto.ErrorResponse;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CancelarDireccionamientoRequestDto;
@@ -185,6 +186,55 @@ public class AlertaController {
                 Page<AlertaResponseDto> alertas = alertaService.listarAlertas(filtro, authentication.getName(),
                                 pageable);
                 return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas consultadas exitosamente"));
+        }
+
+        /**
+         * Consulta el feed comunitario de alertas mediante paginacion basada en cursor
+         * (Keyset / Seek Pagination) sin OFFSET, optimizado para el scroll infinito movil.
+         *
+         * @param cursor         Identificador de la ultima alerta cargada (opcional en el primer lote).
+         * @param size           Cantidad de alertas por lote (por defecto 10, maximo 50).
+         * @param municipio      Municipio territorial para filtrar (opcional).
+         * @param estado         Estado puntual de la alerta (opcional).
+         * @param fechaInicio    Fecha inicial del rango de creacion (opcional).
+         * @param fechaFin       Fecha final del rango de creacion (opcional).
+         * @param authentication Contexto de seguridad con el usuario autenticado.
+         * @return Lote de alertas junto con {@code nextCursor} y {@code hasNext}.
+         */
+        @Operation(
+                summary = "Feed comunitario con paginacion por cursor (Scroll Infinito)",
+                description = "Retorna un lote de alertas empleando Keyset Pagination (WHERE id < cursor) sin OFFSET. "
+                        + "Ideal para el scroll infinito en la aplicacion movil evitando alertas duplicadas y degradacion de lectura."
+        )
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Lote del feed recuperado exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Cursor o tamano de lote invalido, o rango de fechas incoherente", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        })
+        @GetMapping("/feed")
+        @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
+        public ResponseEntity<ApiResponse<CursorPageResponseDto<AlertaResponseDto>>> listarFeedAlertas(
+                        @Parameter(description = "Cursor (ID de la ultima alerta recibida en el lote anterior). Omitir en la primera carga", example = "120") @RequestParam(required = false) Long cursor,
+                        @Parameter(description = "Tamano del lote a cargar (entre 1 y 50)", example = "10") @RequestParam(defaultValue = "10") int size,
+                        @Parameter(description = "Municipio territorial dentro del departamento del usuario (opcional)") @RequestParam(required = false) String municipio,
+                        @Parameter(description = "Estado puntual de la alerta (opcional)") @RequestParam(required = false) EstadoAlerta estado,
+                        @Parameter(description = "Fecha inicial del rango de creacion (opcional, formato YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+                        @Parameter(description = "Fecha final del rango de creacion (opcional, formato YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+                        Authentication authentication) {
+                FiltroAlertaDto filtro = FiltroAlertaDto.builder()
+                                .cursorId(cursor)
+                                .municipio(municipio)
+                                .estado(estado)
+                                .fechaInicio(fechaInicio)
+                                .fechaFin(fechaFin)
+                                .build();
+                CursorPageResponseDto<AlertaResponseDto> lote = alertaService.listarFeedAlertasPorCursor(
+                                filtro,
+                                authentication.getName(),
+                                size
+                );
+                return ResponseEntity.ok(ApiResponse.success(lote, "Feed de alertas consultado exitosamente"));
         }
 
         /**
