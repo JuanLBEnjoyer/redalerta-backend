@@ -74,26 +74,7 @@ docker run -d \
    ```
 
    > Nota de seguridad: El archivo `application.properties` se encuentra excluido del control de versiones (`.gitignore`) para evitar la filtracion de credenciales y claves secretas.
-
-3. Configurar las variables en `application.properties` o mediante variables de entorno del sistema:
-
-   | Variable | Descripcion | Valor por defecto (Desarrollo) |
-   | :--- | :--- | :--- |
-   | `DB_URL` | URL JDBC de conexion a PostgreSQL | `jdbc:postgresql://localhost:5432/redalerta_db` |
-   | `DB_USERNAME` | Usuario de base de datos | `postgres` |
-   | `DB_PASSWORD` | Contrasena de base de datos | `postgres` |
-   | `JWT_SECRET` | Clave secreta hexadecimal (minimo 256 bits) para firmar tokens | Clave de desarrollo en plantilla |
-   | `JWT_EXPIRATION_MS` | Tiempo de vida del token de sesion en milisegundos | `86400000` (24 horas) |
-   | `AWS_S3_BUCKET_NAME` | Nombre del bucket en Amazon S3 para evidencias | `redalerta-evidencias` |
-   | `AWS_ACCESS_KEY_ID` | Credencial de acceso IAM con permisos sobre el bucket S3 | *(Vacio en plantilla)* |
-   | `AWS_SECRET_ACCESS_KEY` | Clave secreta IAM para S3 | *(Vacio en plantilla)* |
-   | `AWS_REGION` | Region de AWS donde reside el bucket | `us-east-1` |
-   | `SPRING_MAIL_HOST` | Servidor SMTP (ej. `smtp-relay.brevo.com` o `smtp.gmail.com`) | `smtp.gmail.com` |
-   | `SPRING_MAIL_PORT` | Puerto SMTP con STARTTLS | `587` |
-   | `SPRING_MAIL_USERNAME` | Usuario de autenticacion SMTP | *(Vacio: activa modo fallback en consola)* |
-   | `SPRING_MAIL_PASSWORD` | Clave SMTP o API Key de envio | *(Vacio en plantilla)* |
-   | `APP_MAIL_FROM` | Correo remitente verificado en el proveedor SMTP | `soporte.redalerta@gmail.com` |
-
+   
 ### Compilacion y Ejecucion de Pruebas
 
 Para validar la compilacion del codigo y ejecutar las pruebas unitarias:
