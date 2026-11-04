@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
@@ -38,7 +39,10 @@ import java.util.List;
  * Entidad que representa una alerta comunitaria creada por un ciudadano.
  */
 @Entity
-@Table(name = "alertas")
+@Table(name = "alertas", indexes = {
+        @Index(name = "idx_alertas_feed_cursor", columnList = "departamento, estado, id DESC"),
+        @Index(name = "idx_alertas_autor_cursor", columnList = "autor_id, id DESC")
+})
 @Data
 @Builder
 @NoArgsConstructor

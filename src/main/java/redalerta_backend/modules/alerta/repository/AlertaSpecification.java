@@ -12,21 +12,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Especificacion JPA con criterios dinamicos para la consulta y filtrado de alertas comunitarias.
+ * Especificacion JPA con criterios dinamicos para la consulta y filtrado de
+ * alertas comunitarias.
  */
 public final class AlertaSpecification {
 
     public static final List<EstadoAlerta> ESTADOS_ACTIVOS = List.of(
             EstadoAlerta.PENDIENTE_REVISION,
             EstadoAlerta.DIRECCIONADA,
-            EstadoAlerta.EN_GESTION
-    );
+            EstadoAlerta.EN_GESTION);
 
     private AlertaSpecification() {
     }
 
     /**
-     * Construye una {@link Specification} dinamica a partir de los criterios de filtrado provistos.
+     * Construye una {@link Specification} dinamica a partir de los criterios de
+     * filtrado provistos.
      *
      * @param filtro Criterios de filtrado por ubicacion, estado y rango de fechas.
      * @return Especificacion lista para ser ejecutada por el repositorio JPA.
@@ -42,8 +43,7 @@ public final class AlertaSpecification {
                             .toLowerCase();
                     predicates.add(cb.equal(
                             cb.lower(root.get("ubicacion").get("departamento")),
-                            deptoNormalizado
-                    ));
+                            deptoNormalizado));
                 }
 
                 // Filtro por municipio territorial (case-insensitive y sin tildes)
@@ -52,8 +52,7 @@ public final class AlertaSpecification {
                             .toLowerCase();
                     predicates.add(cb.equal(
                             cb.lower(root.get("ubicacion").get("municipio")),
-                            muniNormalizado
-                    ));
+                            muniNormalizado));
                 }
 
                 // Filtro por estado puntual o estados activos por defecto
@@ -67,16 +66,21 @@ public final class AlertaSpecification {
                 if (filtro.getFechaInicio() != null) {
                     predicates.add(cb.greaterThanOrEqualTo(
                             root.get("fechaCreacion"),
-                            filtro.getFechaInicio().atStartOfDay()
-                    ));
+                            filtro.getFechaInicio().atStartOfDay()));
                 }
 
                 // Filtro por fecha final (inclusive hasta las 23:59:59.999999999)
                 if (filtro.getFechaFin() != null) {
                     predicates.add(cb.lessThanOrEqualTo(
                             root.get("fechaCreacion"),
-                            filtro.getFechaFin().atTime(LocalTime.MAX)
-                    ));
+                            filtro.getFechaFin().atTime(LocalTime.MAX)));
+                }
+
+                // Filtro por cursor (Keyset Pagination id < cursorId)
+                if (filtro.getCursorId() != null) {
+                    predicates.add(cb.lessThan(
+                            root.get("id"),
+                            filtro.getCursorId()));
                 }
             } else {
                 predicates.add(root.get("estado").in(ESTADOS_ACTIVOS));

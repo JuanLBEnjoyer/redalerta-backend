@@ -53,6 +53,9 @@ class AlertaSpecificationTest {
     private Path<LocalDateTime> fechaCreacionPath;
 
     @Mock
+    private Path<Long> idPath;
+
+    @Mock
     private Predicate predicateMock;
 
     @Test
@@ -141,5 +144,25 @@ class AlertaSpecificationTest {
         assertNotNull(result);
         verify(cb).greaterThanOrEqualTo(fechaCreacionPath, inicio.atStartOfDay());
         verify(cb).lessThanOrEqualTo(fechaCreacionPath, fin.atTime(LocalTime.MAX));
+    }
+
+    @Test
+    @DisplayName("Debe construir predicado id < cursorId cuando se proporciona un cursor")
+    void conFiltroCursorId() {
+        FiltroAlertaDto filtro = FiltroAlertaDto.builder()
+                .cursorId(120L)
+                .build();
+
+        when(root.<EstadoAlerta>get("estado")).thenReturn(estadoPath);
+        when(estadoPath.in(AlertaSpecification.ESTADOS_ACTIVOS)).thenReturn(predicateMock);
+        when(root.<Long>get("id")).thenReturn(idPath);
+        when(cb.lessThan(idPath, 120L)).thenReturn(predicateMock);
+        when(cb.and(any(Predicate[].class))).thenReturn(predicateMock);
+
+        Specification<Alerta> spec = AlertaSpecification.conFiltros(filtro);
+        Predicate result = spec.toPredicate(root, query, cb);
+
+        assertNotNull(result);
+        verify(cb).lessThan(idPath, 120L);
     }
 }

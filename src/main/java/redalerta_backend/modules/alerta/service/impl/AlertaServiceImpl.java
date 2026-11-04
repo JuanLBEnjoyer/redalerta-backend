@@ -1,11 +1,14 @@
 package redalerta_backend.modules.alerta.service.impl;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import redalerta_backend.common.dto.CursorPageResponseDto;
 import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.common.exception.ResourceNotFoundException;
 import redalerta_backend.common.exception.UnauthorizedException;
@@ -157,6 +160,70 @@ public class AlertaServiceImpl implements AlertaService {
         Page<Alerta> alertasPage = alertaRepository.findAll(spec, pageable);
 
         return alertasPage.map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public CursorPageResponseDto<AlertaResponseDto> listarFeedAlertasPorCursor(
+            FiltroAlertaDto filtro,
+            String emailUsuario,
+            int size) {
+        if (size <= 0 || size > 50) {
+            throw new BadRequestException("El tamano del lote debe estar comprendido entre 1 y 50 alertas");
+        }
+
+        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+
+        if (filtro == null) {
+            filtro = new FiltroAlertaDto();
+        }
+
+        if (filtro.getCursorId() != null && filtro.getCursorId() <= 0) {
+            throw new BadRequestException("El cursor debe ser un identificador positivo mayor a cero");
+        }
+
+        if (usuario.getUbicacion() != null && usuario.getRol() != Rol.ROLE_ADMIN) {
+            filtro.setDepartamento(usuario.getUbicacion().departamento());
+        }
+
+        if (filtro.getMunicipio() != null && filtro.getMunicipio().isBlank()) {
+            filtro.setMunicipio(null);
+        }
+
+        if (filtro.getFechaInicio() != null && filtro.getFechaFin() != null) {
+            if (filtro.getFechaInicio().isAfter(filtro.getFechaFin())) {
+                throw new BadRequestException("La fecha de inicio no puede ser posterior a la fecha de fin");
+            }
+        }
+
+        Specification<Alerta> spec = AlertaSpecification.conFiltros(filtro);
+        Pageable consultaSinOffset = PageRequest.of(
+                0,
+                size + 1,
+                Sort.by(Sort.Order.desc("id"))
+        );
+
+        List<Alerta> resultados = alertaRepository.findAll(spec, consultaSinOffset).getContent();
+        boolean hasNext = resultados.size() > size;
+        List<Alerta> loteActual = hasNext ? resultados.subList(0, size) : resultados;
+
+        List<AlertaResponseDto> contenidoDto = loteActual.stream()
+                .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3))
+                .toList();
+
+        Long nextCursor = (hasNext && !loteActual.isEmpty())
+                ? loteActual.get(loteActual.size() - 1).getId()
+                : null;
+
+        return new CursorPageResponseDto<>(
+                contenidoDto,
+                nextCursor,
+                hasNext,
+                contenidoDto.size()
+        );
     }
 
     /**

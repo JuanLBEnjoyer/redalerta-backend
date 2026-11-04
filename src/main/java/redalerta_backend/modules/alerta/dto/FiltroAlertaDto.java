@@ -33,4 +33,7 @@ public class FiltroAlertaDto {
 
     @Schema(description = "Fecha final del rango de creacion (inclusive)", example = "2026-10-16")
     private LocalDate fechaFin;
+
+    @Schema(description = "Identificador de la ultima alerta cargada para paginacion por cursor (Keyset Pagination)", example = "120")
+    private Long cursorId;
 }
