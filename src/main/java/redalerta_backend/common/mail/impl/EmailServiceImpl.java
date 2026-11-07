@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import redalerta_backend.common.mail.EmailService;
 
@@ -27,6 +28,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.mail.from:}")
     private String remitente;
 
+    @Async
     @Override
     public void enviarCodigoRecuperacion(String destinatario, String nombreUsuario, String codigoOtp) {
 
