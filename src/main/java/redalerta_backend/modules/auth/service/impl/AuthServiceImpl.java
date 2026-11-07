@@ -178,12 +178,15 @@ public class AuthServiceImpl implements AuthService {
 
         if (usuarioOpt.isEmpty()) {
             log.info("Solicitud de recuperacion de contrasena para correo no registrado: {}", email);
+            // Mitigacion de Timing Attack: simulamos el costo de computo de BCrypt para igualar tiempos
+            passwordEncoder.encode(String.valueOf(100000 + secureRandom.nextInt(900000)));
             return;
         }
 
         Usuario usuario = usuarioOpt.get();
         if (Boolean.FALSE.equals(usuario.getActivo())) {
             log.info("Solicitud de recuperacion de contrasena para cuenta inactiva: {}", email);
+            passwordEncoder.encode(String.valueOf(100000 + secureRandom.nextInt(900000)));
             return;
         }
 
