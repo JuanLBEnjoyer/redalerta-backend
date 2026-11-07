@@ -35,6 +35,7 @@ import redalerta_backend.modules.usuario.valueobject.Rol;
 import redalerta_backend.modules.usuario.valueobject.Ubicacion;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +49,8 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final int COOLDOWN_SEGUNDOS_SOLICITUD_OTP = 60;
 
     private final UsuarioRepository usuarioRepository;
     private final CaracterizacionUsuarioRepository caracterizacionRepository;
@@ -182,6 +185,22 @@ public class AuthServiceImpl implements AuthService {
         if (Boolean.FALSE.equals(usuario.getActivo())) {
             log.info("Solicitud de recuperacion de contrasena para cuenta inactiva: {}", email);
             return;
+        }
+
+        // Verificacion de tiempo de enfriamiento (Cooldown) de 60 segundos contra spam y abuso
+        Optional<CodigoRecuperacion> ultimoCodigoOpt = codigoRecuperacionRepository
+                .findTopByUsuarioAndUsadoFalseOrderByFechaCreacionDesc(usuario);
+        if (ultimoCodigoOpt.isPresent()) {
+            CodigoRecuperacion ultimoCodigo = ultimoCodigoOpt.get();
+            if (ultimoCodigo.getFechaCreacion() != null) {
+                long segundosTranscurridos = Duration.between(ultimoCodigo.getFechaCreacion(), LocalDateTime.now()).toSeconds();
+                if (segundosTranscurridos >= 0 && segundosTranscurridos < COOLDOWN_SEGUNDOS_SOLICITUD_OTP) {
+                    long segundosRestantes = COOLDOWN_SEGUNDOS_SOLICITUD_OTP - segundosTranscurridos;
+                    throw new BadRequestException("Debe esperar " + segundosRestantes
+                            + " segundo" + (segundosRestantes == 1 ? "" : "s")
+                            + " antes de solicitar un nuevo código de recuperación.");
+                }
+            }
         }
 
         List<CodigoRecuperacion> codigosActivosPrevios = codigoRecuperacionRepository.findByUsuarioAndUsadoFalse(usuario);

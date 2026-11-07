@@ -29,12 +29,6 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void enviarCodigoRecuperacion(String destinatario, String nombreUsuario, String codigoOtp) {
-        if (remitente == null || remitente.isBlank() || remitente.contains("@smtp-brevo.com")) {
-            log.warn("[CONFIGURACION INCOMPLETA] El remitente '{}' no es un correo valido. " +
-                    "Configure la propiedad 'app.mail.from' con el correo electronico verificado en Brevo. " +
-                    "[MODO DESARROLLO] Codigo OTP para {}: {}", remitente, destinatario, codigoOtp);
-            return;
-        }
 
         try {
             MimeMessage mensaje = mailSender.createMimeMessage();

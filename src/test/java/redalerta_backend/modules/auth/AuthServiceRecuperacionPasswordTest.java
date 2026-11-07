@@ -86,11 +86,14 @@ class AuthServiceRecuperacionPasswordTest {
                                 .id(99L)
                                 .usuario(usuarioMock)
                                 .codigoHash("$2a$10$hashprevio")
+                                .fechaCreacion(LocalDateTime.now().minusSeconds(65))
                                 .fechaExpiracion(LocalDateTime.now().plusMinutes(5))
                                 .usado(false)
                                 .build();
 
                 when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
+                when(codigoRecuperacionRepository.findTopByUsuarioAndUsadoFalseOrderByFechaCreacionDesc(usuarioMock))
+                                .thenReturn(Optional.of(codigoPrevio));
                 when(codigoRecuperacionRepository.findByUsuarioAndUsadoFalse(usuarioMock))
                                 .thenReturn(List.of(codigoPrevio));
                 when(passwordEncoder.encode(any(String.class))).thenReturn("$2a$10$encodednewcode");
@@ -132,6 +135,57 @@ class AuthServiceRecuperacionPasswordTest {
                 verify(codigoRecuperacionRepository, never()).save(any());
                 verify(codigoRecuperacionRepository, never()).saveAll(any());
                 verify(emailService, never()).enviarCodigoRecuperacion(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("solicitarRecuperacion: Lanza BadRequestException si se solicita otro codigo antes de terminar el cooldown de 60 segundos")
+        void solicitarRecuperacion_DentroDelCooldown_LanzaBadRequestException() {
+                SolicitarRecuperacionRequestDto request = SolicitarRecuperacionRequestDto.builder()
+                                .email("maria@example.com")
+                                .build();
+
+                CodigoRecuperacion codigoReciente = CodigoRecuperacion.builder()
+                                .id(101L)
+                                .usuario(usuarioMock)
+                                .codigoHash("$2a$10$hashreciente")
+                                .fechaCreacion(LocalDateTime.now().minusSeconds(20))
+                                .fechaExpiracion(LocalDateTime.now().plusMinutes(10))
+                                .usado(false)
+                                .build();
+
+                when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
+                when(codigoRecuperacionRepository.findTopByUsuarioAndUsadoFalseOrderByFechaCreacionDesc(usuarioMock))
+                                .thenReturn(Optional.of(codigoReciente));
+
+                BadRequestException ex = assertThrows(BadRequestException.class,
+                                () -> authService.solicitarRecuperacionPassword(request));
+
+                assertTrue(ex.getMessage().contains("Debe esperar"));
+                assertTrue(ex.getMessage().contains("segundo"));
+
+                verify(codigoRecuperacionRepository, never()).save(any());
+                verify(codigoRecuperacionRepository, never()).saveAll(any());
+                verify(emailService, never()).enviarCodigoRecuperacion(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("solicitarRecuperacion: Permite generar nuevo codigo si no existe codigo previo activo")
+        void solicitarRecuperacion_SinCodigoPrevio_GeneraCodigoExitoso() {
+                SolicitarRecuperacionRequestDto request = SolicitarRecuperacionRequestDto.builder()
+                                .email("maria@example.com")
+                                .build();
+
+                when(usuarioRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(usuarioMock));
+                when(codigoRecuperacionRepository.findTopByUsuarioAndUsadoFalseOrderByFechaCreacionDesc(usuarioMock))
+                                .thenReturn(Optional.empty());
+                when(codigoRecuperacionRepository.findByUsuarioAndUsadoFalse(usuarioMock))
+                                .thenReturn(List.of());
+                when(passwordEncoder.encode(any(String.class))).thenReturn("$2a$10$encodednewcode");
+
+                assertDoesNotThrow(() -> authService.solicitarRecuperacionPassword(request));
+
+                verify(codigoRecuperacionRepository).save(any(CodigoRecuperacion.class));
+                verify(emailService).enviarCodigoRecuperacion(eq("maria@example.com"), eq("Maria Rodriguez"), anyString());
         }
 
         @Test
