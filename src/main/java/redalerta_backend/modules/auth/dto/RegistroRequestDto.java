@@ -39,6 +39,7 @@ public class RegistroRequestDto {
     @Size(min = 6, max = 50, message = "La contraseña debe tener al menos 6 caracteres")
     private String password;
 
+    @NotBlank(message = "El telefono es obligatorio")
     @Size(max = 20, message = "El teléfono no puede superar los 20 caracteres")
     private String telefono;
 

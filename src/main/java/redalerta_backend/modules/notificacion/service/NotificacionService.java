@@ -33,6 +33,11 @@ public interface NotificacionService {
     void marcarTodasComoLeidas(String emailUsuario);
 
     /**
+     * Elimina una notificacion especifica asegurando que pertenezca al usuario autenticado (anti-IDOR).
+     */
+    void eliminarNotificacion(Long id, String emailUsuario);
+
+    /**
      * Retorna la cantidad de notificaciones sin leer del usuario para actualizar badges de UI.
      */
     long contarNoLeidas(String emailUsuario);

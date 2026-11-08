@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -121,6 +122,25 @@ public class NotificacionController {
     public ResponseEntity<ApiResponse<Void>> marcarTodasComoLeidas(Authentication authentication) {
         notificacionService.marcarTodasComoLeidas(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(null, "Todas las notificaciones marcadas como leídas"));
+    }
+
+    @Operation(summary = "Eliminar notificación", description = "Elimina permanentemente una notificación específica del usuario autenticado.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Notificación eliminada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado o token ausente",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Notificación no encontrada o no pertenece al usuario",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> eliminarNotificacion(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        notificacionService.eliminarNotificacion(id, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(null, "Notificación eliminada exitosamente"));
     }
 }
 
