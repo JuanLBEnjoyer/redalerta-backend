@@ -180,6 +180,29 @@ class NotificacionServiceTest {
     }
 
     @Test
+    @DisplayName("eliminarNotificacion: Elimina exitosamente cuando pertenece al usuario")
+    void eliminarNotificacion_Exitoso() {
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
+        when(notificacionRepository.findByIdAndUsuario(100L, usuarioMock)).thenReturn(Optional.of(notificacionMock));
+
+        notificacionService.eliminarNotificacion(100L, "juan@example.com");
+
+        verify(notificacionRepository).delete(notificacionMock);
+    }
+
+    @Test
+    @DisplayName("eliminarNotificacion: Lanza ResourceNotFoundException si la notificacion no existe o no pertenece al usuario (anti-IDOR)")
+    void eliminarNotificacion_NoExisteONoEsDueno_LanzaResourceNotFoundException() {
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
+        when(notificacionRepository.findByIdAndUsuario(999L, usuarioMock)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> notificacionService.eliminarNotificacion(999L, "juan@example.com"));
+
+        verify(notificacionRepository, never()).delete(any());
+    }
+
+    @Test
     @DisplayName("contarNoLeidas: Retorna conteo de pendientes de lectura")
     void contarNoLeidas_Exitoso() {
         when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));

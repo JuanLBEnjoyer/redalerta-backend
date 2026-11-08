@@ -85,6 +85,18 @@ public class NotificacionServiceImpl implements NotificacionService {
     }
 
     @Override
+    @Transactional
+    public void eliminarNotificacion(Long id, String emailUsuario) {
+        Usuario usuario = obtenerUsuarioPorEmail(emailUsuario);
+        Notificacion notificacion = notificacionRepository.findByIdAndUsuario(id, usuario)
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Notificación no encontrada o no pertenece al usuario"));
+
+        notificacionRepository.delete(notificacion);
+        log.info("Notificacion ID {} eliminada por el usuario '{}'", id, usuario.getEmail());
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public long contarNoLeidas(String emailUsuario) {
         Usuario usuario = obtenerUsuarioPorEmail(emailUsuario);
