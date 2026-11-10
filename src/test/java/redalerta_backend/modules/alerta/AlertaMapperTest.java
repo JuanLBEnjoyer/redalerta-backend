@@ -9,8 +9,10 @@ import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
+import redalerta_backend.modules.alerta.valueobject.RegistroHistorial;
 import redalerta_backend.modules.usuario.entity.Usuario;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -151,5 +153,115 @@ class AlertaMapperTest {
         assertEquals(4.533, vo.latitud());
         assertEquals(-75.681, vo.longitud());
         assertEquals(1480.0, vo.altitud());
+    }
+
+    @Test
+    @DisplayName("Debe calcular ultimaActualizacion a partir del ultimo registro del historial")
+    void toResponseDtoCalculaUltimaActualizacionDesdeHistorial() {
+        LocalDateTime fechaCreacion = LocalDateTime.of(2026, 10, 1, 10, 0);
+        LocalDateTime fechaHistorial1 = LocalDateTime.of(2026, 10, 2, 11, 0);
+        LocalDateTime fechaHistorial2 = LocalDateTime.of(2026, 10, 3, 15, 30);
+
+        List<RegistroHistorial> historial = List.of(
+                new RegistroHistorial("Alerta reportada", fechaHistorial1, EstadoAlerta.PENDIENTE_REVISION, 1L, "Juan Perez", "ROLE_CIUDADANO"),
+                new RegistroHistorial("Alerta direccionada", fechaHistorial2, EstadoAlerta.DIRECCIONADA, 2L, "Carlos Lider", "ROLE_LIDER")
+        );
+
+        Alerta alerta = Alerta.builder()
+                .id(20L)
+                .descripcion("Alerta con historial")
+                .autor(autor)
+                .estado(EstadoAlerta.DIRECCIONADA)
+                .esAnonimo(false)
+                .historial(historial)
+                .fechaCreacion(fechaCreacion)
+                .build();
+
+        AlertaResponseDto dto = mapper.toResponseDto(alerta);
+
+        assertNotNull(dto);
+        assertEquals(fechaHistorial2, dto.getUltimaActualizacion());
+        assertEquals(2, dto.getTotalActualizaciones());
+    }
+
+    @Test
+    @DisplayName("Debe usar fechaCreacion como ultimaActualizacion cuando el historial esta vacio")
+    void toResponseDtoUsaFechaCreacionCuandoHistorialEstaVacio() {
+        LocalDateTime fechaCreacion = LocalDateTime.of(2026, 10, 1, 9, 0);
+
+        Alerta alerta = Alerta.builder()
+                .id(21L)
+                .descripcion("Alerta sin historial")
+                .autor(autor)
+                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                .esAnonimo(false)
+                .historial(new ArrayList<>())
+                .fechaCreacion(fechaCreacion)
+                .build();
+
+        AlertaResponseDto dto = mapper.toResponseDto(alerta);
+
+        assertNotNull(dto);
+        assertEquals(fechaCreacion, dto.getUltimaActualizacion());
+        assertEquals(0, dto.getTotalActualizaciones());
+    }
+
+    @Test
+    @DisplayName("Debe calcular ultimaActualizacion en resumen a partir del ultimo registro del historial")
+    void toResumenResponseDtoCalculaUltimaActualizacion() {
+        LocalDateTime fechaCreacion = LocalDateTime.of(2026, 10, 1, 8, 0);
+        LocalDateTime fechaHistorial = LocalDateTime.of(2026, 10, 5, 12, 0);
+
+        List<RegistroHistorial> historial = List.of(
+                new RegistroHistorial("Gestion iniciada", fechaHistorial, EstadoAlerta.EN_GESTION, 3L, "Brigada Norte", "ROLE_ORGANIZACION")
+        );
+
+        Alerta alerta = Alerta.builder()
+                .id(22L)
+                .descripcion("Alerta en gestion")
+                .autor(autor)
+                .estado(EstadoAlerta.EN_GESTION)
+                .esAnonimo(false)
+                .historial(historial)
+                .fechaCreacion(fechaCreacion)
+                .build();
+
+        AlertaResponseDto dto = mapper.toResumenResponseDto(alerta, 3);
+
+        assertNotNull(dto);
+        assertEquals(fechaHistorial, dto.getUltimaActualizacion());
+        assertEquals(1, dto.getTotalActualizaciones());
+    }
+
+    @Test
+    @DisplayName("Debe mapear RegistroHistorial a ActualizacionPublicaResponseDto con titulo correspondiente al estado")
+    void toActualizacionPublicaResponseDtoMapeaCorrectamente() {
+        LocalDateTime fecha = LocalDateTime.of(2026, 10, 5, 14, 0);
+        RegistroHistorial registro = new RegistroHistorial(
+                "La atención de su alerta ha sido iniciada por Brigada Armenia",
+                fecha,
+                EstadoAlerta.EN_GESTION,
+                5L,
+                "Brigada Armenia",
+                "ROLE_ORGANIZACION"
+        );
+
+        redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto dto =
+                mapper.toActualizacionPublicaResponseDto(100L, registro);
+
+        assertNotNull(dto);
+        assertEquals(100L, dto.getAlertaId());
+        assertEquals("Atención Comunitaria en Terreno", dto.getTitulo());
+        assertEquals(registro.motivoOAccion(), dto.getMensaje());
+        assertEquals(EstadoAlerta.EN_GESTION, dto.getEstado());
+        assertEquals("Brigada Armenia", dto.getEntidadResponsable());
+        assertEquals("ROLE_ORGANIZACION", dto.getRolResponsable());
+        assertEquals(fecha, dto.getFechaActualizacion());
+    }
+
+    @Test
+    @DisplayName("Debe retornar null al mapear RegistroHistorial nulo a ActualizacionPublicaResponseDto")
+    void toActualizacionPublicaResponseDtoRegistroNulo() {
+        assertNull(mapper.toActualizacionPublicaResponseDto(100L, null));
     }
 }

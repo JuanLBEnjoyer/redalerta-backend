@@ -119,12 +119,15 @@ public class AlertaController {
 
         /**
          * Consulta el listado paginado de alertas creadas por el ciudadano autenticado.
+         * Permite filtrar opcionalmente por estado para facilitar el seguimiento de
+         * alertas activas, resueltas o rechazadas.
          *
+         * @param estado         Estado especifico de la alerta por el cual filtrar (opcional).
          * @param pageable       Parametros de paginacion y ordenamiento.
          * @param authentication Contexto de seguridad inyectado.
          * @return Pagina de alertas del usuario.
          */
-        @Operation(summary = "Listar mis alertas", description = "Obtiene las alertas comunitarias reportadas por el ciudadano autenticado de forma paginada.")
+        @Operation(summary = "Listar mis alertas", description = "Obtiene las alertas comunitarias reportadas por el ciudadano autenticado de forma paginada. Permite filtrar opcionalmente por estado para un seguimiento diferenciado.")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de alertas recuperado exitosamente"),
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -133,9 +136,10 @@ public class AlertaController {
         @GetMapping("/mis-alertas")
         @PreAuthorize("hasRole('CIUDADANO')")
         public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarMisAlertas(
+                        @Parameter(description = "Estado especifico de la alerta para filtrar (opcional)") @RequestParam(required = false) EstadoAlerta estado,
                         @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
                         Authentication authentication) {
-                Page<AlertaResponseDto> alertas = alertaService.listarMisAlertas(authentication.getName(), pageable);
+                Page<AlertaResponseDto> alertas = alertaService.listarMisAlertas(authentication.getName(), estado, pageable);
                 return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas consultadas exitosamente"));
         }
 
@@ -262,6 +266,70 @@ public class AlertaController {
                         Authentication authentication) {
                 AlertaResponseDto alerta = alertaService.obtenerAlertaPorId(id, authentication.getName());
                 return ResponseEntity.ok(ApiResponse.success(alerta, "Detalle de alerta consultado exitosamente"));
+        }
+
+        /**
+         * Retorna el historial cronologico completo de cambios de estado de una alerta
+         * comunitaria, ordenado de la actualizacion mas reciente a la mas antigua.
+         * Permite al ciudadano y a cualquier miembro del equipo de respuesta hacer
+         * seguimiento al progreso y trazabilidad de la atencion del incidente.
+         *
+         * @param id             Identificador unico de la alerta.
+         * @param authentication Contexto de seguridad inyectado con el usuario
+         *                       autenticado.
+         * @return Lista cronologica descendente de registros de historial de estado.
+         */
+        @Operation(
+                summary = "Consultar historial de estados de una alerta",
+                description = "Retorna la linea de tiempo completa de cambios de estado de una alerta comunitaria, "
+                        + "ordenada de la actualizacion mas reciente a la mas antigua. "
+                        + "Permite al ciudadano y al equipo de respuesta hacer seguimiento detallado del progreso del incidente."
+        )
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Historial de estados consultado exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        })
+        @GetMapping("/{id}/historial")
+        @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
+        public ResponseEntity<ApiResponse<java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto>>> obtenerHistorialAlerta(
+                        @PathVariable Long id,
+                        Authentication authentication) {
+                java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> historial =
+                                alertaService.obtenerHistorialAlerta(id, authentication.getName());
+                return ResponseEntity.ok(ApiResponse.success(historial, "Historial de estados consultado exitosamente"));
+        }
+
+        /**
+         * Retorna la linea de actualizaciones y comunicados publicos de una alerta
+         * comunitaria para la ciudadania, ordenados de forma cronologica descendente.
+         * Permite a los ciudadanos interesados conocer el avance y las intervenciones
+         * realizadas en el incidente.
+         *
+         * @param id             Identificador unico de la alerta comunitaria.
+         * @param authentication Contexto de seguridad inyectado con el usuario autenticado.
+         * @return Lista de actualizaciones publicas sobre el avance de la alerta.
+         */
+        @Operation(
+                summary = "Consultar actualizaciones públicas de una alerta",
+                description = "Obtiene los comunicados y avances publicos sobre el progreso de atencion de una alerta comunitaria, "
+                        + "ordenados de forma cronologica descendente para facilitar el seguimiento ciudadano."
+        )
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Actualizaciones publicas consultadas exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        })
+        @GetMapping("/{id}/actualizaciones-publicas")
+        @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
+        public ResponseEntity<ApiResponse<java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto>>> listarActualizacionesPublicas(
+                        @PathVariable Long id,
+                        Authentication authentication) {
+                java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> actualizaciones =
+                                alertaService.listarActualizacionesPublicas(id, authentication.getName());
+                return ResponseEntity.ok(ApiResponse.success(actualizaciones, "Actualizaciones públicas consultadas exitosamente"));
         }
 
         /**

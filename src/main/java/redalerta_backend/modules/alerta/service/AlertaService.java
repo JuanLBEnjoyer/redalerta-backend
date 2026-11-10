@@ -25,12 +25,15 @@ public interface AlertaService {
         /**
          * Retorna el listado paginado de alertas creadas exclusivamente por el
          * ciudadano autenticado.
+         * Permite filtrar opcionalmente por estado para facilitar el seguimiento
+         * diferenciado de alertas activas, resueltas o rechazadas.
          *
          * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+         * @param estado       Estado especifico por el cual filtrar (opcional).
          * @param pageable     Configuracion de paginacion y ordenamiento.
          * @return Pagina de alertas del ciudadano.
          */
-        Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable);
+        Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, redalerta_backend.modules.alerta.valueobject.EstadoAlerta estado, Pageable pageable);
 
         /**
          * Retorna el listado paginado de alertas comunitarias aplicando los filtros
@@ -77,6 +80,31 @@ public interface AlertaService {
          * @return Detalle de la alerta encontrada en formato DTO.
          */
         AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario);
+
+        /**
+         * Retorna el historial cronologico completo de cambios de estado de una alerta
+         * comunitaria, ordenado de la accion mas reciente a la mas antigua.
+         * Permite al ciudadano y a cualquier miembro del equipo de respuesta hacer
+         * seguimiento al progreso y trazabilidad de la atencion del incidente.
+         *
+         * @param alertaId     Identificador unico de la alerta.
+         * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+         * @return Lista de registros de historial ordenada cronologicamente de forma descendente.
+         */
+        java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> obtenerHistorialAlerta(
+                        Long alertaId, String emailUsuario);
+
+        /**
+         * Retorna la linea de actualizaciones y comunicados publicos sobre el avance
+         * de atencion de una alerta comunitaria para la ciudadania, ordenados
+         * del mas reciente al mas antiguo.
+         *
+         * @param alertaId     Identificador unico de la alerta comunitaria.
+         * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+         * @return Lista cronologica descendente de actualizaciones publicas sobre el avance.
+         */
+        java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> listarActualizacionesPublicas(
+                        Long alertaId, String emailUsuario);
 
         /**
          * Elimina una alerta comunitaria creada por el ciudadano autenticado.

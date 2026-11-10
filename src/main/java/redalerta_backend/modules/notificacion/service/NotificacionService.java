@@ -18,6 +18,11 @@ public interface NotificacionService {
     Page<NotificacionResponseDto> listarNotificaciones(String emailUsuario, Boolean soloNoLeidas, Pageable pageable);
 
     /**
+     * Obtiene el listado de notificaciones de progreso recibidas por el usuario sobre una alerta especifica.
+     */
+    java.util.List<NotificacionResponseDto> listarNotificacionesPorAlerta(String emailUsuario, Long alertaId);
+
+    /**
      * Consulta el detalle explicativo de una notificacion y la marca automaticamente como leida.
      */
     NotificacionResponseDto obtenerDetalle(Long id, String emailUsuario);

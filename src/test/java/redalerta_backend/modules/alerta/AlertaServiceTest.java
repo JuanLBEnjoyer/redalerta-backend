@@ -50,6 +50,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import org.mockito.ArgumentMatchers;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -203,7 +204,7 @@ class AlertaServiceTest {
         }
 
         @Test
-        @DisplayName("Debe listar las alertas del ciudadano de forma paginada")
+        @DisplayName("Debe listar las alertas del ciudadano de forma paginada sin filtro de estado")
         void listarMisAlertasExitoso() {
                 Pageable pageable = PageRequest.of(0, 10);
                 Alerta alerta = Alerta.builder()
@@ -219,11 +220,84 @@ class AlertaServiceTest {
                                 AlertaResponseDto.builder().id(1L).descripcion("Incidente en la via").totalEvidencias(0)
                                                 .build());
 
-                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas("carlos@example.com", pageable);
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas("carlos@example.com", null, pageable);
 
                 assertNotNull(resultado);
                 assertEquals(1, resultado.getContent().size());
                 assertEquals(1L, resultado.getContent().getFirst().getId());
+        }
+
+        @Test
+        @DisplayName("Debe listar las alertas del ciudadano filtradas por estado PENDIENTE_REVISION")
+        void listarMisAlertasFiltradoPorEstado() {
+                Pageable pageable = PageRequest.of(0, 10);
+                Alerta alerta = Alerta.builder()
+                                .id(2L)
+                                .descripcion("Alerta pendiente")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.PENDIENTE_REVISION, pageable))
+                                .thenReturn(new PageImpl<>(List.of(alerta)));
+                when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                                AlertaResponseDto.builder().id(2L).estado(EstadoAlerta.PENDIENTE_REVISION).build());
+
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas(
+                                "carlos@example.com", EstadoAlerta.PENDIENTE_REVISION, pageable);
+
+                assertNotNull(resultado);
+                assertEquals(1, resultado.getContent().size());
+                assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.getContent().getFirst().getEstado());
+                verify(alertaRepository).findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.PENDIENTE_REVISION, pageable);
+                verify(alertaRepository, never()).findByAutorIdOrderByFechaCreacionDesc(anyLong(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("Debe listar las alertas del ciudadano filtradas por estado RESUELTA")
+        void listarMisAlertasFiltradoPorEstadoResuelta() {
+                Pageable pageable = PageRequest.of(0, 10);
+                Alerta alerta = Alerta.builder()
+                                .id(3L)
+                                .descripcion("Alerta resuelta")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.RESUELTA)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.RESUELTA, pageable))
+                                .thenReturn(new PageImpl<>(List.of(alerta)));
+                when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                                AlertaResponseDto.builder().id(3L).estado(EstadoAlerta.RESUELTA)
+                                                .totalActualizaciones(3).build());
+
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas(
+                                "carlos@example.com", EstadoAlerta.RESUELTA, pageable);
+
+                assertNotNull(resultado);
+                assertEquals(1, resultado.getContent().size());
+                assertEquals(EstadoAlerta.RESUELTA, resultado.getContent().getFirst().getEstado());
+        }
+
+        @Test
+        @DisplayName("Debe retornar lista vacia si el ciudadano no tiene alertas con el estado indicado")
+        void listarMisAlertasFiltradoSinResultados() {
+                Pageable pageable = PageRequest.of(0, 10);
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.RECHAZADA, pageable))
+                                .thenReturn(new PageImpl<>(List.of()));
+
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas(
+                                "carlos@example.com", EstadoAlerta.RECHAZADA, pageable);
+
+                assertNotNull(resultado);
+                assertTrue(resultado.getContent().isEmpty());
         }
 
         @Test
@@ -299,6 +373,185 @@ class AlertaServiceTest {
                                 () -> alertaService.obtenerAlertaPorId(999L, "carlos@example.com"));
 
                 assertTrue(exception.getMessage().contains("999"));
+        }
+
+        @Test
+        @DisplayName("Debe retornar el historial de estados de una alerta ordenado de mas reciente a mas antiguo")
+        void obtenerHistorialAlertaExitoso() {
+                redalerta_backend.modules.alerta.valueobject.RegistroHistorial registro1 =
+                        new redalerta_backend.modules.alerta.valueobject.RegistroHistorial(
+                                "Alerta reportada por ciudadano",
+                                java.time.LocalDateTime.of(2026, 10, 1, 10, 0),
+                                EstadoAlerta.PENDIENTE_REVISION, 1L, "Carlos Perez", "ROLE_CIUDADANO");
+                redalerta_backend.modules.alerta.valueobject.RegistroHistorial registro2 =
+                        new redalerta_backend.modules.alerta.valueobject.RegistroHistorial(
+                                "Alerta direccionada a brigada comunitaria",
+                                java.time.LocalDateTime.of(2026, 10, 2, 11, 30),
+                                EstadoAlerta.DIRECCIONADA, 2L, "Maria Lider", "ROLE_LIDER");
+                redalerta_backend.modules.alerta.valueobject.RegistroHistorial registro3 =
+                        new redalerta_backend.modules.alerta.valueobject.RegistroHistorial(
+                                "Gestion iniciada en terreno",
+                                java.time.LocalDateTime.of(2026, 10, 3, 9, 0),
+                                EstadoAlerta.EN_GESTION, 3L, "Brigada Norte", "ROLE_ORGANIZACION");
+
+                Alerta alerta = Alerta.builder()
+                                .id(50L)
+                                .descripcion("Incidente con historial")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.EN_GESTION)
+                                .historial(java.util.List.of(registro1, registro2, registro3))
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(50L)).thenReturn(Optional.of(alerta));
+                when(alertaMapper.toHistorialResponseDto(any())).thenAnswer(inv -> {
+                        redalerta_backend.modules.alerta.valueobject.RegistroHistorial r = inv.getArgument(0);
+                        return redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto.builder()
+                                        .motivoOAccion(r.motivoOAccion())
+                                        .fechaAccion(r.fechaAccion())
+                                        .estadoResultante(r.estadoResultante())
+                                        .responsableId(r.responsableId())
+                                        .responsableNombre(r.responsableNombre())
+                                        .responsableRol(r.responsableRol())
+                                        .build();
+                });
+
+                java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> resultado =
+                                alertaService.obtenerHistorialAlerta(50L, "carlos@example.com");
+
+                assertNotNull(resultado);
+                assertEquals(3, resultado.size());
+                // Debe estar ordenado de mas reciente a mas antiguo
+                assertEquals(EstadoAlerta.EN_GESTION, resultado.get(0).getEstadoResultante());
+                assertEquals(EstadoAlerta.DIRECCIONADA, resultado.get(1).getEstadoResultante());
+                assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.get(2).getEstadoResultante());
+                assertTrue(resultado.get(0).getFechaAccion().isAfter(resultado.get(1).getFechaAccion()));
+                assertTrue(resultado.get(1).getFechaAccion().isAfter(resultado.get(2).getFechaAccion()));
+        }
+
+        @Test
+        @DisplayName("Debe retornar lista vacia si la alerta no tiene registros en el historial")
+        void obtenerHistorialAlertaVacio() {
+                Alerta alerta = Alerta.builder()
+                                .id(51L)
+                                .descripcion("Alerta reciente sin historial")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .historial(new java.util.ArrayList<>())
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(51L)).thenReturn(Optional.of(alerta));
+
+                java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> resultado =
+                                alertaService.obtenerHistorialAlerta(51L, "carlos@example.com");
+
+                assertNotNull(resultado);
+                assertTrue(resultado.isEmpty());
+        }
+
+        @Test
+        @DisplayName("Debe lanzar ResourceNotFoundException si la alerta no existe al consultar el historial")
+        void obtenerHistorialAlertaNoExiste() {
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(999L)).thenReturn(Optional.empty());
+
+                ResourceNotFoundException exception = assertThrows(
+                                ResourceNotFoundException.class,
+                                () -> alertaService.obtenerHistorialAlerta(999L, "carlos@example.com"));
+
+                assertTrue(exception.getMessage().contains("999"));
+        }
+
+        @Test
+        @DisplayName("Debe lanzar ResourceNotFoundException si el usuario no existe al consultar el historial")
+        void obtenerHistorialAlertaUsuarioInexistente() {
+                when(usuarioRepository.findByEmail("noexiste@example.com")).thenReturn(Optional.empty());
+
+                assertThrows(
+                                ResourceNotFoundException.class,
+                                () -> alertaService.obtenerHistorialAlerta(50L, "noexiste@example.com"));
+
+                verify(alertaRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("Debe listar las actualizaciones publicas de una alerta en orden cronologico descendente")
+        void listarActualizacionesPublicasExitoso() {
+                redalerta_backend.modules.alerta.valueobject.RegistroHistorial registro1 =
+                        new redalerta_backend.modules.alerta.valueobject.RegistroHistorial(
+                                "Alerta reportada por ciudadano",
+                                java.time.LocalDateTime.of(2026, 10, 1, 10, 0),
+                                EstadoAlerta.PENDIENTE_REVISION, 1L, "Carlos Perez", "ROLE_CIUDADANO");
+                redalerta_backend.modules.alerta.valueobject.RegistroHistorial registro2 =
+                        new redalerta_backend.modules.alerta.valueobject.RegistroHistorial(
+                                "La atención de su alerta ha sido iniciada por Brigada Norte",
+                                java.time.LocalDateTime.of(2026, 10, 3, 9, 0),
+                                EstadoAlerta.EN_GESTION, 3L, "Brigada Norte", "ROLE_ORGANIZACION");
+
+                Alerta alerta = Alerta.builder()
+                                .id(60L)
+                                .descripcion("Derrumbe en via principal")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.EN_GESTION)
+                                .historial(java.util.List.of(registro1, registro2))
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(60L)).thenReturn(Optional.of(alerta));
+                when(alertaMapper.toActualizacionPublicaResponseDto(eq(60L), any())).thenAnswer(inv -> {
+                        redalerta_backend.modules.alerta.valueobject.RegistroHistorial r = inv.getArgument(1);
+                        return redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto.builder()
+                                        .alertaId(60L)
+                                        .titulo("Avance")
+                                        .mensaje(r.motivoOAccion())
+                                        .estado(r.estadoResultante())
+                                        .entidadResponsable(r.responsableNombre())
+                                        .rolResponsable(r.responsableRol())
+                                        .fechaActualizacion(r.fechaAccion())
+                                        .build();
+                });
+
+                java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> resultado =
+                                alertaService.listarActualizacionesPublicas(60L, "carlos@example.com");
+
+                assertNotNull(resultado);
+                assertEquals(2, resultado.size());
+                assertEquals(EstadoAlerta.EN_GESTION, resultado.get(0).getEstado());
+                assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.get(1).getEstado());
+                assertTrue(resultado.get(0).getFechaActualizacion().isAfter(resultado.get(1).getFechaActualizacion()));
+        }
+
+        @Test
+        @DisplayName("Debe retornar lista vacia si la alerta no tiene actualizaciones publicas registradas")
+        void listarActualizacionesPublicasVacio() {
+                Alerta alerta = Alerta.builder()
+                                .id(61L)
+                                .descripcion("Alerta sin actualizaciones")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .historial(new java.util.ArrayList<>())
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(61L)).thenReturn(Optional.of(alerta));
+
+                java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> resultado =
+                                alertaService.listarActualizacionesPublicas(61L, "carlos@example.com");
+
+                assertNotNull(resultado);
+                assertTrue(resultado.isEmpty());
+        }
+
+        @Test
+        @DisplayName("Debe lanzar ResourceNotFoundException si la alerta no existe al consultar actualizaciones publicas")
+        void listarActualizacionesPublicasAlertaNoExiste() {
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findById(999L)).thenReturn(Optional.empty());
+
+                assertThrows(
+                                ResourceNotFoundException.class,
+                                () -> alertaService.listarActualizacionesPublicas(999L, "carlos@example.com"));
         }
 
         @Test

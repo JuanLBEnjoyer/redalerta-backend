@@ -120,8 +120,12 @@ public class AlertaServiceImpl implements AlertaService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable) {
+    public Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, EstadoAlerta estado, Pageable pageable) {
         Usuario autor = buscarUsuarioPorEmail(emailUsuario);
+        if (estado != null) {
+            return alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(autor.getId(), estado, pageable)
+                    .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
+        }
         return alertaRepository.findByAutorIdOrderByFechaCreacionDesc(autor.getId(), pageable)
                 .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
     }
@@ -238,6 +242,57 @@ public class AlertaServiceImpl implements AlertaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
 
         return alertaMapper.toResponseDto(alerta);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> obtenerHistorialAlerta(
+            Long alertaId, String emailUsuario) {
+        buscarUsuarioPorEmail(emailUsuario);
+
+        Alerta alerta = alertaRepository.findById(alertaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + alertaId));
+
+        java.util.List<redalerta_backend.modules.alerta.valueobject.RegistroHistorial> historial = alerta.getHistorial();
+        if (historial == null || historial.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        // Retorna el historial de mas reciente a mas antiguo
+        return historial.stream()
+                .sorted(java.util.Comparator.comparing(
+                        redalerta_backend.modules.alerta.valueobject.RegistroHistorial::fechaAccion,
+                        java.util.Comparator.reverseOrder()))
+                .map(alertaMapper::toHistorialResponseDto)
+                .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> listarActualizacionesPublicas(
+            Long alertaId, String emailUsuario) {
+        buscarUsuarioPorEmail(emailUsuario);
+
+        Alerta alerta = alertaRepository.findById(alertaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + alertaId));
+
+        java.util.List<redalerta_backend.modules.alerta.valueobject.RegistroHistorial> historial = alerta.getHistorial();
+        if (historial == null || historial.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        return historial.stream()
+                .sorted(java.util.Comparator.comparing(
+                        redalerta_backend.modules.alerta.valueobject.RegistroHistorial::fechaAccion,
+                        java.util.Comparator.reverseOrder()))
+                .map(registro -> alertaMapper.toActualizacionPublicaResponseDto(alerta.getId(), registro))
+                .toList();
     }
 
     /**

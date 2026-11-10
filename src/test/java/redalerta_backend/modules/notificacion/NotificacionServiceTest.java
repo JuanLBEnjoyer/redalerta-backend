@@ -262,5 +262,34 @@ class NotificacionServiceTest {
 
         verify(notificacionRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("listarNotificacionesPorAlerta: Retorna notificaciones asociadas a la alerta para el usuario")
+    void listarNotificacionesPorAlerta_Exitoso() {
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(usuarioMock));
+        when(notificacionRepository.findByUsuarioAndAlertaIdOrderByFechaCreacionDesc(usuarioMock, 10L))
+                .thenReturn(List.of(notificacionMock));
+        when(notificacionMapper.toResponseDto(notificacionMock)).thenReturn(responseDtoMock);
+
+        List<NotificacionResponseDto> resultado = notificacionService.listarNotificacionesPorAlerta("juan@example.com", 10L);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+        assertEquals(responseDtoMock, resultado.get(0));
+        verify(notificacionRepository).findByUsuarioAndAlertaIdOrderByFechaCreacionDesc(usuarioMock, 10L);
+    }
+
+    @Test
+    @DisplayName("listarNotificacionesPorAlerta: Lanza ResourceNotFoundException si el usuario no existe")
+    void listarNotificacionesPorAlerta_UsuarioNoExiste() {
+        when(usuarioRepository.findByEmail("noexiste@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> notificacionService.listarNotificacionesPorAlerta("noexiste@example.com", 10L)
+        );
+
+        verify(notificacionRepository, never()).findByUsuarioAndAlertaIdOrderByFechaCreacionDesc(any(), any());
+    }
 }
 
