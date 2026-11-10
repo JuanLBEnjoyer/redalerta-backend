@@ -27,10 +27,13 @@ import redalerta_backend.modules.alerta.dto.RechazarAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.ResolverAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.UploadEvidenciaResponseDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
+import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
 import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
 import redalerta_backend.modules.alerta.repository.AlertaRepository;
 import redalerta_backend.modules.alerta.repository.AlertaSpecification;
+import redalerta_backend.modules.alerta.repository.EvidenciaAlertaRepository;
 import redalerta_backend.modules.alerta.service.AlertaService;
 import redalerta_backend.modules.alerta.service.MensajeAlertaHelper;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
@@ -46,6 +49,7 @@ import redalerta_backend.modules.usuario.valueobject.Rol;
  * Aplica principios Zero Trust y control de acceso contra vulnerabilidades
  * IDOR.
  */
+@Slf4j
 @Service
 public class AlertaServiceImpl implements AlertaService {
 
@@ -56,19 +60,22 @@ public class AlertaServiceImpl implements AlertaService {
     private final AlertaMapper alertaMapper;
     private final StorageService storageService;
     private final NotificacionService notificacionService;
+    private final EvidenciaAlertaRepository evidenciaAlertaRepository;
 
     public AlertaServiceImpl(
             AlertaRepository alertaRepository,
             UsuarioRepository usuarioRepository,
             AlertaMapper alertaMapper,
             StorageService storageService,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService,
+            EvidenciaAlertaRepository evidenciaAlertaRepository) {
         super();
         this.alertaRepository = alertaRepository;
         this.usuarioRepository = usuarioRepository;
         this.alertaMapper = alertaMapper;
         this.storageService = storageService;
         this.notificacionService = notificacionService;
+        this.evidenciaAlertaRepository = evidenciaAlertaRepository;
     }
 
     /**
@@ -103,8 +110,14 @@ public class AlertaServiceImpl implements AlertaService {
         if (request.getEvidenciasUrls() != null && !request.getEvidenciasUrls().isEmpty()) {
             for (String url : request.getEvidenciasUrls()) {
                 if (url != null && !url.isBlank()) {
+                    String urlLimpia = url.trim();
+                    String key = null;
+                    try {
+                        key = extraerClaveS3(urlLimpia);
+                    } catch (Exception ignored) {}
                     EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
-                            .url(url.trim())
+                            .url(urlLimpia)
+                            .s3Key(key)
                             .build();
                     alerta.agregarEvidencia(evidencia);
                 }
@@ -347,14 +360,35 @@ public class AlertaServiceImpl implements AlertaService {
         alerta.setUbicacion(alertaMapper.toUbicacionAlerta(request.getUbicacion()));
 
         if (request.getEvidenciasUrls() != null) {
-            alerta.getEvidencias().clear();
-            for (String url : request.getEvidenciasUrls()) {
-                if (url != null && !url.isBlank()) {
-                    EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
-                            .url(url.trim())
-                            .build();
-                    alerta.agregarEvidencia(evidencia);
+            List<String> nuevasUrls = request.getEvidenciasUrls().stream()
+                    .filter(u -> u != null && !u.isBlank())
+                    .map(String::trim)
+                    .toList();
+
+            List<EvidenciaAlerta> evidenciasAEliminar = alerta.getEvidencias().stream()
+                    .filter(e -> !nuevasUrls.contains(e.getUrl()))
+                    .toList();
+
+            for (EvidenciaAlerta e : evidenciasAEliminar) {
+                try {
+                    String key = e.getS3Key() != null ? e.getS3Key() : extraerClaveS3(e.getUrl());
+                    storageService.eliminarArchivo(key);
+                } catch (Exception ex) {
+                    log.warn("No fue posible eliminar de S3 la evidencia removida durante modificacion: {}", e.getUrl(), ex);
                 }
+            }
+
+            alerta.getEvidencias().clear();
+            for (String url : nuevasUrls) {
+                String key = null;
+                try {
+                    key = extraerClaveS3(url);
+                } catch (Exception ignored) {}
+                EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
+                        .url(url)
+                        .s3Key(key)
+                        .build();
+                alerta.agregarEvidencia(evidencia);
             }
         }
 
@@ -373,6 +407,71 @@ public class AlertaServiceImpl implements AlertaService {
     public UploadEvidenciaResponseDto subirEvidencia(MultipartFile archivo, String emailUsuario) {
         buscarUsuarioPorEmail(emailUsuario);
         return storageService.subirEvidencia(archivo, "alertas/evidencias");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void eliminarEvidencia(String urlOClave, String emailUsuario) {
+        if (urlOClave == null || urlOClave.isBlank()) {
+            throw new BadRequestException("La URL o clave de la evidencia es obligatoria");
+        }
+
+        Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
+
+        String s3Key = extraerClaveS3(urlOClave);
+
+        // Buscar si la evidencia ya se encuentra registrada en base de datos vinculada a una alerta
+        Optional<EvidenciaAlerta> optEvidencia = evidenciaAlertaRepository.findByUrl(urlOClave.trim());
+        if (optEvidencia.isEmpty()) {
+            optEvidencia = evidenciaAlertaRepository.findByS3Key(s3Key);
+        }
+
+        if (optEvidencia.isPresent()) {
+            EvidenciaAlerta evidencia = optEvidencia.get();
+            Alerta alerta = evidencia.getAlerta();
+            if (alerta != null) {
+                boolean esAutor = alerta.getAutor() != null && alerta.getAutor().getId().equals(usuario.getId());
+                boolean esAdmin = usuario.getRol() == Rol.ROLE_ADMIN;
+
+                if (!esAutor && !esAdmin) {
+                    throw new UnauthorizedException("No tiene permisos para eliminar evidencias asociadas a esta alerta");
+                }
+
+                if (esAutor && alerta.getEstado() != EstadoAlerta.PENDIENTE_REVISION) {
+                    throw new BadRequestException("Solo se pueden eliminar evidencias de alertas en estado PENDIENTE_REVISION");
+                }
+
+                alerta.getEvidencias().remove(evidencia);
+                alertaRepository.save(alerta);
+                log.info("Evidencia ID {} desvinculada de la alerta ID {} por usuario {}", evidencia.getId(), alerta.getId(), usuario.getEmail());
+            }
+        }
+
+        // Eliminar fisicamente el archivo de AWS S3
+        storageService.eliminarArchivo(s3Key);
+        log.info("Evidencia eliminada fisicamente de S3: s3Key={} por usuario {}", s3Key, usuario.getEmail());
+    }
+
+    private String extraerClaveS3(String urlOClave) {
+        String limpia = urlOClave.trim();
+        int idx = limpia.indexOf("alertas/evidencias/");
+        if (idx != -1) {
+            limpia = limpia.substring(idx);
+        }
+
+        int queryIdx = limpia.indexOf('?');
+        if (queryIdx != -1) {
+            limpia = limpia.substring(0, queryIdx);
+        }
+
+        if (limpia.contains("..") || !limpia.startsWith("alertas/evidencias/")) {
+            throw new BadRequestException("La clave o ruta de evidencia no es valida o no pertenece al directorio permitido");
+        }
+
+        return limpia;
     }
 
     /**

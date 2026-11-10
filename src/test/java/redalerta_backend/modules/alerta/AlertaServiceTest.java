@@ -28,8 +28,10 @@ import redalerta_backend.modules.alerta.dto.RechazarAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.ResolverAlertaRequestDto;
 import redalerta_backend.modules.alerta.dto.UbicacionAlertaDto;
 import redalerta_backend.modules.alerta.entity.Alerta;
+import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.mapper.AlertaMapper;
 import redalerta_backend.modules.alerta.repository.AlertaRepository;
+import redalerta_backend.modules.alerta.repository.EvidenciaAlertaRepository;
 import redalerta_backend.modules.alerta.service.impl.AlertaServiceImpl;
 import redalerta_backend.modules.alerta.valueobject.CategoriaAlerta;
 import redalerta_backend.modules.alerta.valueobject.EstadoAlerta;
@@ -50,7 +52,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import org.mockito.ArgumentMatchers;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -75,6 +76,9 @@ class AlertaServiceTest {
 
         @Mock
         private StorageService storageService;
+
+        @Mock
+        private EvidenciaAlertaRepository evidenciaAlertaRepository;
 
         @InjectMocks
         private AlertaServiceImpl alertaService;
@@ -1025,6 +1029,144 @@ class AlertaServiceTest {
 
                 assertEquals("El usuario se encuentra inactivo", exception.getMessage());
                 verify(storageService, never()).subirEvidencia(any(), any());
+        }
+
+        @Test
+        @DisplayName("Debe eliminar evidencia no registrada en BD exitosamente de AWS S3")
+        void eliminarEvidenciaNoRegistradaEnBdExitoso() {
+                String url = "https://bucket.s3.amazonaws.com/alertas/evidencias/foto-123.jpg";
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(evidenciaAlertaRepository.findByUrl(url)).thenReturn(Optional.empty());
+                when(evidenciaAlertaRepository.findByS3Key("alertas/evidencias/foto-123.jpg")).thenReturn(Optional.empty());
+
+                assertDoesNotThrow(() -> alertaService.eliminarEvidencia(url, "carlos@example.com"));
+
+                verify(storageService).eliminarArchivo("alertas/evidencias/foto-123.jpg");
+                verify(alertaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Debe eliminar evidencia registrada en alerta propia en estado PENDIENTE_REVISION")
+        void eliminarEvidenciaRegistradaEnAlertaPropiaExitoso() {
+                String s3Key = "alertas/evidencias/foto-propia.jpg";
+                Alerta alerta = Alerta.builder()
+                                .id(50L)
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .build();
+                EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
+                                .id(1L)
+                                .url("https://s3.amazonaws.com/alertas/evidencias/foto-propia.jpg")
+                                .s3Key(s3Key)
+                                .alerta(alerta)
+                                .build();
+                alerta.agregarEvidencia(evidencia);
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(evidenciaAlertaRepository.findByUrl(s3Key)).thenReturn(Optional.empty());
+                when(evidenciaAlertaRepository.findByS3Key(s3Key)).thenReturn(Optional.of(evidencia));
+
+                assertDoesNotThrow(() -> alertaService.eliminarEvidencia(s3Key, "carlos@example.com"));
+
+                assertTrue(alerta.getEvidencias().isEmpty());
+                verify(alertaRepository).save(alerta);
+                verify(storageService).eliminarArchivo(s3Key);
+        }
+
+        @Test
+        @DisplayName("Debe lanzar UnauthorizedException si un ciudadano intenta eliminar evidencia de una alerta ajena")
+        void eliminarEvidenciaAlertaAjenaLanzaUnauthorizedException() {
+                Usuario otroUsuario = Usuario.builder().id(99L).email("otro@example.com").activo(true).build();
+                Alerta alertaAjena = Alerta.builder()
+                                .id(51L)
+                                .autor(otroUsuario)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .build();
+                EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
+                                .id(2L)
+                                .url("https://s3.amazonaws.com/alertas/evidencias/foto-ajena.jpg")
+                                .s3Key("alertas/evidencias/foto-ajena.jpg")
+                                .alerta(alertaAjena)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(evidenciaAlertaRepository.findByUrl("alertas/evidencias/foto-ajena.jpg")).thenReturn(Optional.of(evidencia));
+
+                UnauthorizedException ex = assertThrows(
+                                UnauthorizedException.class,
+                                () -> alertaService.eliminarEvidencia("alertas/evidencias/foto-ajena.jpg", "carlos@example.com"));
+
+                assertTrue(ex.getMessage().contains("No tiene permisos para eliminar evidencias asociadas a esta alerta"));
+                verify(storageService, never()).eliminarArchivo(any());
+        }
+
+        @Test
+        @DisplayName("Debe lanzar BadRequestException si la alerta no esta en estado PENDIENTE_REVISION")
+        void eliminarEvidenciaAlertaEnGestionLanzaBadRequestException() {
+                Alerta alertaEnGestion = Alerta.builder()
+                                .id(52L)
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.EN_GESTION)
+                                .build();
+                EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
+                                .id(3L)
+                                .url("https://s3.amazonaws.com/alertas/evidencias/foto-gestion.jpg")
+                                .s3Key("alertas/evidencias/foto-gestion.jpg")
+                                .alerta(alertaEnGestion)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(evidenciaAlertaRepository.findByUrl("alertas/evidencias/foto-gestion.jpg")).thenReturn(Optional.of(evidencia));
+
+                BadRequestException ex = assertThrows(
+                                BadRequestException.class,
+                                () -> alertaService.eliminarEvidencia("alertas/evidencias/foto-gestion.jpg", "carlos@example.com"));
+
+                assertTrue(ex.getMessage().contains("Solo se pueden eliminar evidencias de alertas en estado PENDIENTE_REVISION"));
+                verify(storageService, never()).eliminarArchivo(any());
+        }
+
+        @Test
+        @DisplayName("Debe permitir al administrador eliminar evidencia de cualquier alerta")
+        void eliminarEvidenciaPorAdminExitoso() {
+                Usuario admin = Usuario.builder().id(999L).email("admin@redalerta.gov.co").rol(Rol.ROLE_ADMIN).activo(true).build();
+                Usuario autor = Usuario.builder().id(12L).email("autor@example.com").activo(true).build();
+                Alerta alerta = Alerta.builder()
+                                .id(53L)
+                                .autor(autor)
+                                .estado(EstadoAlerta.EN_GESTION)
+                                .build();
+                EvidenciaAlerta evidencia = EvidenciaAlerta.builder()
+                                .id(4L)
+                                .url("https://s3.amazonaws.com/alertas/evidencias/foto-admin.jpg")
+                                .s3Key("alertas/evidencias/foto-admin.jpg")
+                                .alerta(alerta)
+                                .build();
+                alerta.agregarEvidencia(evidencia);
+
+                when(usuarioRepository.findByEmail("admin@redalerta.gov.co")).thenReturn(Optional.of(admin));
+                when(evidenciaAlertaRepository.findByUrl("alertas/evidencias/foto-admin.jpg")).thenReturn(Optional.of(evidencia));
+
+                assertDoesNotThrow(() -> alertaService.eliminarEvidencia("alertas/evidencias/foto-admin.jpg", "admin@redalerta.gov.co"));
+
+                assertTrue(alerta.getEvidencias().isEmpty());
+                verify(alertaRepository).save(alerta);
+                verify(storageService).eliminarArchivo("alertas/evidencias/foto-admin.jpg");
+        }
+
+        @Test
+        @DisplayName("Debe lanzar BadRequestException si la ruta contiene intento de Path Traversal o prefijo invalido")
+        void eliminarEvidenciaClaveInvalidaLanzaBadRequestException() {
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.eliminarEvidencia(null, "carlos@example.com"));
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.eliminarEvidencia("   ", "carlos@example.com"));
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.eliminarEvidencia("../../etc/passwd", "carlos@example.com"));
+                assertThrows(BadRequestException.class,
+                                () -> alertaService.eliminarEvidencia("solicitudes/archivo.pdf", "carlos@example.com"));
         }
 
         @Test
