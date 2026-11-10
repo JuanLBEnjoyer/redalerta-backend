@@ -269,6 +269,39 @@ public class AlertaController {
         }
 
         /**
+         * Retorna el historial cronologico completo de cambios de estado de una alerta
+         * comunitaria, ordenado de la actualizacion mas reciente a la mas antigua.
+         * Permite al ciudadano y a cualquier miembro del equipo de respuesta hacer
+         * seguimiento al progreso y trazabilidad de la atencion del incidente.
+         *
+         * @param id             Identificador unico de la alerta.
+         * @param authentication Contexto de seguridad inyectado con el usuario
+         *                       autenticado.
+         * @return Lista cronologica descendente de registros de historial de estado.
+         */
+        @Operation(
+                summary = "Consultar historial de estados de una alerta",
+                description = "Retorna la linea de tiempo completa de cambios de estado de una alerta comunitaria, "
+                        + "ordenada de la actualizacion mas reciente a la mas antigua. "
+                        + "Permite al ciudadano y al equipo de respuesta hacer seguimiento detallado del progreso del incidente."
+        )
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Historial de estados consultado exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        })
+        @GetMapping("/{id}/historial")
+        @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
+        public ResponseEntity<ApiResponse<java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto>>> obtenerHistorialAlerta(
+                        @PathVariable Long id,
+                        Authentication authentication) {
+                java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> historial =
+                                alertaService.obtenerHistorialAlerta(id, authentication.getName());
+                return ResponseEntity.ok(ApiResponse.success(historial, "Historial de estados consultado exitosamente"));
+        }
+
+        /**
          * Permite a un ciudadano autenticado eliminar una alerta de su autoria en
          * estado PENDIENTE_REVISION.
          *

@@ -82,6 +82,19 @@ public interface AlertaService {
         AlertaResponseDto obtenerAlertaPorId(Long id, String emailUsuario);
 
         /**
+         * Retorna el historial cronologico completo de cambios de estado de una alerta
+         * comunitaria, ordenado de la accion mas reciente a la mas antigua.
+         * Permite al ciudadano y a cualquier miembro del equipo de respuesta hacer
+         * seguimiento al progreso y trazabilidad de la atencion del incidente.
+         *
+         * @param alertaId     Identificador unico de la alerta.
+         * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+         * @return Lista de registros de historial ordenada cronologicamente de forma descendente.
+         */
+        java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> obtenerHistorialAlerta(
+                        Long alertaId, String emailUsuario);
+
+        /**
          * Elimina una alerta comunitaria creada por el ciudadano autenticado.
          * Unicamente se permite la eliminacion si la alerta se encuentra en estado
          * PENDIENTE_REVISION.

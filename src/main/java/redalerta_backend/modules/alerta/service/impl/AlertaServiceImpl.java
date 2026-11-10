@@ -248,6 +248,32 @@ public class AlertaServiceImpl implements AlertaService {
      * {@inheritDoc}
      */
     @Override
+    @Transactional(readOnly = true)
+    public java.util.List<redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto> obtenerHistorialAlerta(
+            Long alertaId, String emailUsuario) {
+        buscarUsuarioPorEmail(emailUsuario);
+
+        Alerta alerta = alertaRepository.findById(alertaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + alertaId));
+
+        java.util.List<redalerta_backend.modules.alerta.valueobject.RegistroHistorial> historial = alerta.getHistorial();
+        if (historial == null || historial.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        // Retorna el historial de mas reciente a mas antiguo
+        return historial.stream()
+                .sorted(java.util.Comparator.comparing(
+                        redalerta_backend.modules.alerta.valueobject.RegistroHistorial::fechaAccion,
+                        java.util.Comparator.reverseOrder()))
+                .map(alertaMapper::toHistorialResponseDto)
+                .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     @Transactional
     public void eliminarAlerta(Long id, String emailUsuario) {
         Usuario usuario = buscarUsuarioPorEmail(emailUsuario);
