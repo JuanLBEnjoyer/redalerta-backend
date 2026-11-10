@@ -232,4 +232,36 @@ class AlertaMapperTest {
         assertEquals(fechaHistorial, dto.getUltimaActualizacion());
         assertEquals(1, dto.getTotalActualizaciones());
     }
+
+    @Test
+    @DisplayName("Debe mapear RegistroHistorial a ActualizacionPublicaResponseDto con titulo correspondiente al estado")
+    void toActualizacionPublicaResponseDtoMapeaCorrectamente() {
+        LocalDateTime fecha = LocalDateTime.of(2026, 10, 5, 14, 0);
+        RegistroHistorial registro = new RegistroHistorial(
+                "La atención de su alerta ha sido iniciada por Brigada Armenia",
+                fecha,
+                EstadoAlerta.EN_GESTION,
+                5L,
+                "Brigada Armenia",
+                "ROLE_ORGANIZACION"
+        );
+
+        redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto dto =
+                mapper.toActualizacionPublicaResponseDto(100L, registro);
+
+        assertNotNull(dto);
+        assertEquals(100L, dto.getAlertaId());
+        assertEquals("Atención Comunitaria en Terreno", dto.getTitulo());
+        assertEquals(registro.motivoOAccion(), dto.getMensaje());
+        assertEquals(EstadoAlerta.EN_GESTION, dto.getEstado());
+        assertEquals("Brigada Armenia", dto.getEntidadResponsable());
+        assertEquals("ROLE_ORGANIZACION", dto.getRolResponsable());
+        assertEquals(fecha, dto.getFechaActualizacion());
+    }
+
+    @Test
+    @DisplayName("Debe retornar null al mapear RegistroHistorial nulo a ActualizacionPublicaResponseDto")
+    void toActualizacionPublicaResponseDtoRegistroNulo() {
+        assertNull(mapper.toActualizacionPublicaResponseDto(100L, null));
+    }
 }
