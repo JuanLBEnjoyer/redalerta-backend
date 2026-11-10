@@ -25,15 +25,12 @@ public interface AlertaService {
         /**
          * Retorna el listado paginado de alertas creadas exclusivamente por el
          * ciudadano autenticado.
-         * Permite filtrar opcionalmente por estado para facilitar el seguimiento
-         * diferenciado de alertas activas, resueltas o rechazadas.
          *
          * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
-         * @param estado       Estado especifico por el cual filtrar (opcional).
          * @param pageable     Configuracion de paginacion y ordenamiento.
          * @return Pagina de alertas del ciudadano.
          */
-        Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, redalerta_backend.modules.alerta.valueobject.EstadoAlerta estado, Pageable pageable);
+        Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable);
 
         /**
          * Retorna el listado paginado de alertas comunitarias aplicando los filtros

@@ -73,10 +73,4 @@ public class AlertaResponseDto {
 
     @Schema(description = "Fecha y hora de creacion de la alerta")
     private LocalDateTime fechaCreacion;
-
-    @Schema(description = "Fecha y hora de la ultima actualizacion de estado de la alerta")
-    private LocalDateTime ultimaActualizacion;
-
-    @Schema(description = "Total de actualizaciones de estado registradas en el historial", example = "3")
-    private Integer totalActualizaciones;
 }

@@ -119,15 +119,12 @@ public class AlertaController {
 
         /**
          * Consulta el listado paginado de alertas creadas por el ciudadano autenticado.
-         * Permite filtrar opcionalmente por estado para facilitar el seguimiento de
-         * alertas activas, resueltas o rechazadas.
          *
-         * @param estado         Estado especifico de la alerta por el cual filtrar (opcional).
          * @param pageable       Parametros de paginacion y ordenamiento.
          * @param authentication Contexto de seguridad inyectado.
          * @return Pagina de alertas del usuario.
          */
-        @Operation(summary = "Listar mis alertas", description = "Obtiene las alertas comunitarias reportadas por el ciudadano autenticado de forma paginada. Permite filtrar opcionalmente por estado para un seguimiento diferenciado.")
+        @Operation(summary = "Listar mis alertas", description = "Obtiene las alertas comunitarias reportadas por el ciudadano autenticado de forma paginada.")
         @ApiResponses(value = {
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de alertas recuperado exitosamente"),
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -136,10 +133,9 @@ public class AlertaController {
         @GetMapping("/mis-alertas")
         @PreAuthorize("hasRole('CIUDADANO')")
         public ResponseEntity<ApiResponse<Page<AlertaResponseDto>>> listarMisAlertas(
-                        @Parameter(description = "Estado especifico de la alerta para filtrar (opcional)") @RequestParam(required = false) EstadoAlerta estado,
                         @PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable,
                         Authentication authentication) {
-                Page<AlertaResponseDto> alertas = alertaService.listarMisAlertas(authentication.getName(), estado, pageable);
+                Page<AlertaResponseDto> alertas = alertaService.listarMisAlertas(authentication.getName(), pageable);
                 return ResponseEntity.ok(ApiResponse.success(alertas, "Alertas consultadas exitosamente"));
         }
 

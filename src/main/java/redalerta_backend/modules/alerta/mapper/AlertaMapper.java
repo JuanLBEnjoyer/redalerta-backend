@@ -11,9 +11,7 @@ import redalerta_backend.modules.alerta.entity.EvidenciaAlerta;
 import redalerta_backend.modules.alerta.valueobject.RegistroHistorial;
 import redalerta_backend.modules.alerta.valueobject.UbicacionAlerta;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -37,10 +35,6 @@ public class AlertaMapper {
         Long orgId = alerta.getOrganizacionAsignada() != null ? alerta.getOrganizacionAsignada().getId() : null;
         String orgNombre = alerta.getOrganizacionAsignada() != null ? alerta.getOrganizacionAsignada().getNombre() : null;
 
-        List<RegistroHistorial> historial = alerta.getHistorial();
-        int totalActualizaciones = historial != null ? historial.size() : 0;
-        LocalDateTime ultimaActualizacion = resolverUltimaActualizacion(historial, alerta.getFechaCreacion());
-
         return AlertaResponseDto.builder()
                 .id(alerta.getId())
                 .descripcion(alerta.getDescripcion())
@@ -53,15 +47,13 @@ public class AlertaMapper {
                 .esAnonimo(esAnonimo)
                 .totalEvidencias(totalEvidencias)
                 .evidencias(toEvidenciaResponseDtoList(alerta.getEvidencias()))
-                .historial(toHistorialResponseDtoList(historial))
+                .historial(toHistorialResponseDtoList(alerta.getHistorial()))
                 .liderId(liderId)
                 .liderNombre(liderNombre)
                 .organizacionId(orgId)
                 .organizacionNombre(orgNombre)
                 .observacionTecnica(alerta.getObservacionTecnica())
                 .fechaCreacion(alerta.getFechaCreacion())
-                .ultimaActualizacion(ultimaActualizacion)
-                .totalActualizaciones(totalActualizaciones)
                 .build();
     }
 
@@ -88,10 +80,6 @@ public class AlertaMapper {
                     .toList();
         }
 
-        List<RegistroHistorial> historial = alerta.getHistorial();
-        int totalActualizaciones = historial != null ? historial.size() : 0;
-        LocalDateTime ultimaActualizacion = resolverUltimaActualizacion(historial, alerta.getFechaCreacion());
-
         return AlertaResponseDto.builder()
                 .id(alerta.getId())
                 .descripcion(alerta.getDescripcion())
@@ -104,35 +92,14 @@ public class AlertaMapper {
                 .esAnonimo(esAnonimo)
                 .totalEvidencias(totalEvidencias)
                 .evidencias(evidenciasResumen)
-                .historial(toHistorialResponseDtoList(historial))
+                .historial(toHistorialResponseDtoList(alerta.getHistorial()))
                 .liderId(liderId)
                 .liderNombre(liderNombre)
                 .organizacionId(orgId)
                 .organizacionNombre(orgNombre)
                 .observacionTecnica(alerta.getObservacionTecnica())
                 .fechaCreacion(alerta.getFechaCreacion())
-                .ultimaActualizacion(ultimaActualizacion)
-                .totalActualizaciones(totalActualizaciones)
                 .build();
-    }
-
-    /**
-     * Determina la fecha de la ultima actualizacion de estado a partir del historial.
-     * Si el historial esta vacio o es nulo, retorna la fecha de creacion de la alerta.
-     *
-     * @param historial      Lista de registros de historial.
-     * @param fechaCreacion  Fecha de creacion de la alerta como valor de respaldo.
-     * @return Fecha de la ultima accion registrada o la fecha de creacion.
-     */
-    private LocalDateTime resolverUltimaActualizacion(List<RegistroHistorial> historial, LocalDateTime fechaCreacion) {
-        if (historial == null || historial.isEmpty()) {
-            return fechaCreacion;
-        }
-        return historial.stream()
-                .map(RegistroHistorial::fechaAccion)
-                .filter(java.util.Objects::nonNull)
-                .max(Comparator.naturalOrder())
-                .orElse(fechaCreacion);
     }
 
     public List<RegistroHistorialResponseDto> toHistorialResponseDtoList(List<RegistroHistorial> historial) {
