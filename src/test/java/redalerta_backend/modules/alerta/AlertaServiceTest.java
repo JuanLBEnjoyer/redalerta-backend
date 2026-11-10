@@ -50,6 +50,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import org.mockito.ArgumentMatchers;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -203,7 +204,7 @@ class AlertaServiceTest {
         }
 
         @Test
-        @DisplayName("Debe listar las alertas del ciudadano de forma paginada")
+        @DisplayName("Debe listar las alertas del ciudadano de forma paginada sin filtro de estado")
         void listarMisAlertasExitoso() {
                 Pageable pageable = PageRequest.of(0, 10);
                 Alerta alerta = Alerta.builder()
@@ -219,11 +220,84 @@ class AlertaServiceTest {
                                 AlertaResponseDto.builder().id(1L).descripcion("Incidente en la via").totalEvidencias(0)
                                                 .build());
 
-                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas("carlos@example.com", pageable);
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas("carlos@example.com", null, pageable);
 
                 assertNotNull(resultado);
                 assertEquals(1, resultado.getContent().size());
                 assertEquals(1L, resultado.getContent().getFirst().getId());
+        }
+
+        @Test
+        @DisplayName("Debe listar las alertas del ciudadano filtradas por estado PENDIENTE_REVISION")
+        void listarMisAlertasFiltradoPorEstado() {
+                Pageable pageable = PageRequest.of(0, 10);
+                Alerta alerta = Alerta.builder()
+                                .id(2L)
+                                .descripcion("Alerta pendiente")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.PENDIENTE_REVISION)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.PENDIENTE_REVISION, pageable))
+                                .thenReturn(new PageImpl<>(List.of(alerta)));
+                when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                                AlertaResponseDto.builder().id(2L).estado(EstadoAlerta.PENDIENTE_REVISION).build());
+
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas(
+                                "carlos@example.com", EstadoAlerta.PENDIENTE_REVISION, pageable);
+
+                assertNotNull(resultado);
+                assertEquals(1, resultado.getContent().size());
+                assertEquals(EstadoAlerta.PENDIENTE_REVISION, resultado.getContent().getFirst().getEstado());
+                verify(alertaRepository).findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.PENDIENTE_REVISION, pageable);
+                verify(alertaRepository, never()).findByAutorIdOrderByFechaCreacionDesc(anyLong(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("Debe listar las alertas del ciudadano filtradas por estado RESUELTA")
+        void listarMisAlertasFiltradoPorEstadoResuelta() {
+                Pageable pageable = PageRequest.of(0, 10);
+                Alerta alerta = Alerta.builder()
+                                .id(3L)
+                                .descripcion("Alerta resuelta")
+                                .autor(usuarioCiudadano)
+                                .estado(EstadoAlerta.RESUELTA)
+                                .build();
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.RESUELTA, pageable))
+                                .thenReturn(new PageImpl<>(List.of(alerta)));
+                when(alertaMapper.toResumenResponseDto(alerta, 3)).thenReturn(
+                                AlertaResponseDto.builder().id(3L).estado(EstadoAlerta.RESUELTA)
+                                                .totalActualizaciones(3).build());
+
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas(
+                                "carlos@example.com", EstadoAlerta.RESUELTA, pageable);
+
+                assertNotNull(resultado);
+                assertEquals(1, resultado.getContent().size());
+                assertEquals(EstadoAlerta.RESUELTA, resultado.getContent().getFirst().getEstado());
+        }
+
+        @Test
+        @DisplayName("Debe retornar lista vacia si el ciudadano no tiene alertas con el estado indicado")
+        void listarMisAlertasFiltradoSinResultados() {
+                Pageable pageable = PageRequest.of(0, 10);
+
+                when(usuarioRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(usuarioCiudadano));
+                when(alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(
+                                1L, EstadoAlerta.RECHAZADA, pageable))
+                                .thenReturn(new PageImpl<>(List.of()));
+
+                Page<AlertaResponseDto> resultado = alertaService.listarMisAlertas(
+                                "carlos@example.com", EstadoAlerta.RECHAZADA, pageable);
+
+                assertNotNull(resultado);
+                assertTrue(resultado.getContent().isEmpty());
         }
 
         @Test
