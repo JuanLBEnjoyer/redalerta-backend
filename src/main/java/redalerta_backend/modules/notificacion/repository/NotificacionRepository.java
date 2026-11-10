@@ -29,6 +29,18 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     Page<Notificacion> findByUsuarioAndLeidaOrderByFechaCreacionDesc(Usuario usuario, Boolean leida, Pageable pageable);
 
     /**
+     * Obtiene el listado paginado de notificaciones de un usuario asociadas a una alerta especifica
+     * ordenadas por fecha de creacion descendente.
+     */
+    Page<Notificacion> findByUsuarioAndAlertaIdOrderByFechaCreacionDesc(Usuario usuario, Long alertaId, Pageable pageable);
+
+    /**
+     * Obtiene el listado de notificaciones de un usuario asociadas a una alerta especifica
+     * ordenadas cronologicamente de forma descendente.
+     */
+    java.util.List<Notificacion> findByUsuarioAndAlertaIdOrderByFechaCreacionDesc(Usuario usuario, Long alertaId);
+
+    /**
      * Busca una notificacion por su ID asegurando que pertenezca al usuario consultante (proteccion BOLA/IDOR).
      */
     Optional<Notificacion> findByIdAndUsuario(Long id, Usuario usuario);

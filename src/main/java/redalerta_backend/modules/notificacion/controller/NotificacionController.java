@@ -58,6 +58,25 @@ public class NotificacionController {
         return ResponseEntity.ok(ApiResponse.success(pagina, "Notificaciones consultadas exitosamente"));
     }
 
+    @Operation(summary = "Listar notificaciones de progreso por alerta", description = "Obtiene las notificaciones de progreso y cambios de estado recibidas por el usuario para una alerta en especifico.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Notificaciones de la alerta consultadas exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o token invalido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado o token ausente",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/alerta/{alertaId}")
+    public ResponseEntity<ApiResponse<java.util.List<NotificacionResponseDto>>> listarPorAlerta(
+            Authentication authentication,
+            @PathVariable Long alertaId
+    ) {
+        java.util.List<NotificacionResponseDto> notificaciones = notificacionService.listarNotificacionesPorAlerta(
+                authentication.getName(), alertaId
+        );
+        return ResponseEntity.ok(ApiResponse.success(notificaciones, "Notificaciones de la alerta consultadas exitosamente"));
+    }
+
     @Operation(summary = "Contar no leidas", description = "Retorna el total de notificaciones no leidas del usuario para mostrar en el indicador/badge de la campana.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Conteo obtenido exitosamente"),

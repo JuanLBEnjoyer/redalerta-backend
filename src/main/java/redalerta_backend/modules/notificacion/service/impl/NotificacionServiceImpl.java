@@ -48,6 +48,16 @@ public class NotificacionServiceImpl implements NotificacionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.List<NotificacionResponseDto> listarNotificacionesPorAlerta(String emailUsuario, Long alertaId) {
+        Usuario usuario = obtenerUsuarioPorEmail(emailUsuario);
+        return notificacionRepository.findByUsuarioAndAlertaIdOrderByFechaCreacionDesc(usuario, alertaId)
+                .stream()
+                .map(notificacionMapper::toResponseDto)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public NotificacionResponseDto obtenerDetalle(Long id, String emailUsuario) {
         Usuario usuario = obtenerUsuarioPorEmail(emailUsuario);
