@@ -17,6 +17,16 @@ import java.util.Collection;
 public interface AlertaRepository extends JpaRepository<Alerta, Long>, JpaSpecificationExecutor<Alerta> {
 
     /**
+     * Consulta el listado paginado de alertas creadas por un usuario especifico y filtradas por estado.
+     *
+     * @param autorId  Identificador del usuario autor.
+     * @param estado   Estado especifico de la alerta.
+     * @param pageable Configuracion de paginacion.
+     * @return Pagina de alertas del autor filtradas por estado.
+     */
+    Page<Alerta> findByAutorIdAndEstadoOrderByFechaCreacionDesc(Long autorId, EstadoAlerta estado, Pageable pageable);
+
+    /**
      * Consulta el listado paginado de alertas creadas por un usuario especifico ordenadas descendentemente por fecha.
      *
      * @param autorId Identificador del usuario autor.

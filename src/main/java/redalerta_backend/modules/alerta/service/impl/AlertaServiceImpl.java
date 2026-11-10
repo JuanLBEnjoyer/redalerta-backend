@@ -120,8 +120,12 @@ public class AlertaServiceImpl implements AlertaService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, Pageable pageable) {
+    public Page<AlertaResponseDto> listarMisAlertas(String emailUsuario, EstadoAlerta estado, Pageable pageable) {
         Usuario autor = buscarUsuarioPorEmail(emailUsuario);
+        if (estado != null) {
+            return alertaRepository.findByAutorIdAndEstadoOrderByFechaCreacionDesc(autor.getId(), estado, pageable)
+                    .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
+        }
         return alertaRepository.findByAutorIdOrderByFechaCreacionDesc(autor.getId(), pageable)
                 .map(alerta -> alertaMapper.toResumenResponseDto(alerta, 3));
     }
