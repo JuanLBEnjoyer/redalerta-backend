@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 import redalerta_backend.common.dto.ApiResponse;
 import redalerta_backend.common.dto.CursorPageResponseDto;
 import redalerta_backend.common.dto.ErrorResponse;
+import redalerta_backend.common.exception.BadRequestException;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.CancelarDireccionamientoRequestDto;
 import redalerta_backend.modules.alerta.dto.CrearAlertaRequestDto;
@@ -115,6 +116,36 @@ public class AlertaController {
                                 ApiResponse.success(respuesta,
                                                 "Evidencia fotografica subida y optimizada exitosamente"),
                                 HttpStatus.CREATED);
+        }
+
+        /**
+         * Elimina un archivo de evidencia fotografica de AWS S3 y desvincula el registro
+         * en base de datos si ya estuviera asociado a una alerta existente.
+         *
+         * @param url            URL publica de la evidencia a eliminar (opcional si se pasa s3Key).
+         * @param s3Key          Clave de objeto en S3 de la evidencia (opcional si se pasa url).
+         * @param authentication Contexto de seguridad con el usuario autenticado.
+         * @return Respuesta exitosa con codigo HTTP 200 OK.
+         */
+        @Operation(summary = "Eliminar evidencia fotografica", description = "Elimina un archivo de evidencia de AWS S3 y lo desvincula de la alerta si ya estuviera asociado.")
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Evidencia fotografica eliminada exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "URL o clave de evidencia invalida", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "No tiene permisos para eliminar evidencias asociadas a esta alerta", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        })
+        @DeleteMapping("/evidencias")
+        @PreAuthorize("hasRole('CIUDADANO') or hasRole('ADMIN')")
+        public ResponseEntity<ApiResponse<Void>> eliminarEvidencia(
+                        @Parameter(description = "URL publica de la evidencia en S3") @RequestParam(value = "url", required = false) String url,
+                        @Parameter(description = "Clave de objeto en S3 alternativa") @RequestParam(value = "s3Key", required = false) String s3Key,
+                        Authentication authentication) {
+                String identificador = (url != null && !url.isBlank()) ? url : s3Key;
+                if (identificador == null || identificador.isBlank()) {
+                        throw new BadRequestException("Debe proporcionar el parametro 'url' o 's3Key' de la evidencia a eliminar");
+                }
+                alertaService.eliminarEvidencia(identificador, authentication.getName());
+                return ResponseEntity.ok(ApiResponse.success(null, "Evidencia eliminada exitosamente"));
         }
 
         /**

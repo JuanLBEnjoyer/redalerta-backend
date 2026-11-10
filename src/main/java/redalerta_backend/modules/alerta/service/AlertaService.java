@@ -139,6 +139,16 @@ public interface AlertaService {
                         org.springframework.web.multipart.MultipartFile archivo, String emailUsuario);
 
         /**
+         * Elimina un archivo de evidencia fotografica de AWS S3 a partir de su URL o clave de objeto.
+         * Si la evidencia ya esta asociada a una alerta en la base de datos, valida permisos y la
+         * desvincula del registro.
+         *
+         * @param urlOClave    URL publica o clave de objeto en S3 de la evidencia.
+         * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+         */
+        void eliminarEvidencia(String urlOClave, String emailUsuario);
+
+        /**
          * Consulta los comités o brigadas comunitarias elegibles en la jurisdicción del
          * líder.
          *
