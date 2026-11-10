@@ -1,6 +1,7 @@
 package redalerta_backend.modules.alerta.mapper;
 
 import org.springframework.stereotype.Component;
+import redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto;
 import redalerta_backend.modules.alerta.dto.AlertaResponseDto;
 import redalerta_backend.modules.alerta.dto.EvidenciaResponseDto;
 import redalerta_backend.modules.alerta.dto.RegistroHistorialResponseDto;
@@ -156,6 +157,30 @@ public class AlertaMapper {
                 .responsableId(registro.responsableId())
                 .responsableNombre(registro.responsableNombre())
                 .responsableRol(registro.responsableRol())
+                .build();
+    }
+
+    public ActualizacionPublicaResponseDto toActualizacionPublicaResponseDto(Long alertaId, RegistroHistorial registro) {
+        if (registro == null) {
+            return null;
+        }
+
+        String titulo = switch (registro.estadoResultante()) {
+            case PENDIENTE_REVISION -> "Reporte Radicado";
+            case DIRECCIONADA -> "Alerta Direccionada a Comité";
+            case EN_GESTION -> "Atención Comunitaria en Terreno";
+            case RESUELTA -> "Alerta Resuelta Satisfactoriamente";
+            case RECHAZADA -> "Alerta Desestimada / Rechazada";
+        };
+
+        return ActualizacionPublicaResponseDto.builder()
+                .alertaId(alertaId)
+                .titulo(titulo)
+                .mensaje(registro.motivoOAccion())
+                .estado(registro.estadoResultante())
+                .entidadResponsable(registro.responsableNombre())
+                .rolResponsable(registro.responsableRol())
+                .fechaActualizacion(registro.fechaAccion())
                 .build();
     }
 

@@ -302,6 +302,37 @@ public class AlertaController {
         }
 
         /**
+         * Retorna la linea de actualizaciones y comunicados publicos de una alerta
+         * comunitaria para la ciudadania, ordenados de forma cronologica descendente.
+         * Permite a los ciudadanos interesados conocer el avance y las intervenciones
+         * realizadas en el incidente.
+         *
+         * @param id             Identificador unico de la alerta comunitaria.
+         * @param authentication Contexto de seguridad inyectado con el usuario autenticado.
+         * @return Lista de actualizaciones publicas sobre el avance de la alerta.
+         */
+        @Operation(
+                summary = "Consultar actualizaciones públicas de una alerta",
+                description = "Obtiene los comunicados y avances publicos sobre el progreso de atencion de una alerta comunitaria, "
+                        + "ordenados de forma cronologica descendente para facilitar el seguimiento ciudadano."
+        )
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Actualizaciones publicas consultadas exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o usuario inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Acceso denegado", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Alerta no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        })
+        @GetMapping("/{id}/actualizaciones-publicas")
+        @PreAuthorize("hasAnyRole('CIUDADANO', 'LIDER', 'ORGANIZACION', 'ADMIN')")
+        public ResponseEntity<ApiResponse<java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto>>> listarActualizacionesPublicas(
+                        @PathVariable Long id,
+                        Authentication authentication) {
+                java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> actualizaciones =
+                                alertaService.listarActualizacionesPublicas(id, authentication.getName());
+                return ResponseEntity.ok(ApiResponse.success(actualizaciones, "Actualizaciones públicas consultadas exitosamente"));
+        }
+
+        /**
          * Permite a un ciudadano autenticado eliminar una alerta de su autoria en
          * estado PENDIENTE_REVISION.
          *

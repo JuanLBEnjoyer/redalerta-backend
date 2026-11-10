@@ -95,6 +95,18 @@ public interface AlertaService {
                         Long alertaId, String emailUsuario);
 
         /**
+         * Retorna la linea de actualizaciones y comunicados publicos sobre el avance
+         * de atencion de una alerta comunitaria para la ciudadania, ordenados
+         * del mas reciente al mas antiguo.
+         *
+         * @param alertaId     Identificador unico de la alerta comunitaria.
+         * @param emailUsuario Correo del usuario autenticado obtenido del token JWT.
+         * @return Lista cronologica descendente de actualizaciones publicas sobre el avance.
+         */
+        java.util.List<redalerta_backend.modules.alerta.dto.ActualizacionPublicaResponseDto> listarActualizacionesPublicas(
+                        Long alertaId, String emailUsuario);
+
+        /**
          * Elimina una alerta comunitaria creada por el ciudadano autenticado.
          * Unicamente se permite la eliminacion si la alerta se encuentra en estado
          * PENDIENTE_REVISION.
